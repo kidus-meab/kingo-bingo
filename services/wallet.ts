@@ -49,8 +49,13 @@ async function ensureDepositAccounts() {
   for (const account of DEFAULT_ACCOUNTS) {
     await db.orm.DepositAccount.create({
       id: newId(),
-      ...account,
-    } as AccountRow & { id: string });
+      label: account.label,
+      bankName: account.bankName,
+      accountName: account.accountName,
+      accountNumber: account.accountNumber,
+      active: account.active ?? 1,
+      sortOrder: account.sortOrder ?? 0,
+    });
   }
 
   return (await db.orm.DepositAccount.all()) as AccountRow[];
