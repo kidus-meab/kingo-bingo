@@ -1,13 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import { useRouter } from "next/navigation";
 
 import { UserChip } from "@/components/user-chip";
 import { WalletChip } from "@/components/wallet-chip";
-import { DEFAULT_ROOM_CODE } from "@/lib/bingo";
+import { apiFetch } from "@/lib/client-session";
 import { getTelegramInitData, type TelegramUser } from "@/lib/telegram";
+
+type RoomListItem = {
+  id: string;
+  code: string;
+  status: string;
+  stake: number;
+  players: number;
+  pot: number;
+  roundStatus: string | null;
+};
 
 const DEV_FALLBACK_USER: TelegramUser = {
   id: 0,
@@ -21,12 +30,20 @@ type AuthState =
   | { status: "ready"; user: TelegramUser; devFallback: boolean }
   | { status: "error"; message: string };
 
-type CartelaStatus = "unknown" | "ready" | "missing";
+function roundLabel(status: string | null) {
+  if (!status || status === "pending") return "Open";
+  if (status === "starting") return "Starting";
+  if (status === "drawing") return "Live";
+  if (status === "finished") return "Finished";
+  return status;
+}
 
 export function HomeScreen() {
   const router = useRouter();
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
-  const [cartelas, setCartelas] = useState<CartelaStatus>("unknown");
+  const [rooms, setRooms] = useState<RoomListItem[]>([]);
+  const [roomsError, setRoomsError] = useState<string | null>(null);
+  const [joining, setJoining] = useState<string | null>(null);
 
   useEffect(() => {
     const initData = getTelegramInitData();
@@ -77,7 +94,8 @@ export function HomeScreen() {
         if (!cancelled) {
           setAuth({
             status: "error",
-            message: "Telegram session is invalid or expired. Reopen the Mini App.",
+            message:
+              "Telegram session is invalid or expired. Reopen the Mini App.",
           });
         }
       }
@@ -91,41 +109,61 @@ export function HomeScreen() {
   }, []);
 
   useEffect(() => {
+    if (auth.status !== "ready") return;
     let cancelled = false;
 
-    async function loadCartelas() {
+    async function loadRooms() {
       try {
-        const response = await fetch("/api/cartelas");
-        const payload = (await response.json()) as { count?: number };
+        const payload = await apiFetch<{ rooms: RoomListItem[] }>("/api/rooms");
         if (!cancelled) {
-          setCartelas(payload.count === 100 ? "ready" : "missing");
+          setRooms(payload.rooms);
+          setRoomsError(null);
         }
-      } catch {
-        if (!cancelled) setCartelas("missing");
+      } catch (err) {
+        if (!cancelled) {
+          setRoomsError(
+            err instanceof Error ? err.message : "Could not load rooms",
+          );
+        }
       }
     }
 
-    void loadCartelas();
+    void loadRooms();
+    const timer = window.setInterval(() => {
+      void loadRooms().catch(() => undefined);
+    }, 4000);
 
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
     };
-  }, []);
+  }, [auth.status]);
+
+  async function joinRoom(code: string) {
+    setJoining(code);
+    setRoomsError(null);
+    try {
+      await apiFetch("/api/rooms/join", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+      });
+      router.push(`/play?code=${encodeURIComponent(code)}`);
+    } catch (err) {
+      setRoomsError(err instanceof Error ? err.message : "Could not join room");
+      setJoining(null);
+    }
+  }
 
   return (
-    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-background px-5 py-6">
+    <main className="relative flex h-dvh flex-col overflow-hidden bg-background px-5 py-6">
       <div
         aria-hidden
         className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-theme/20 blur-3xl"
       />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.14] [background-image:radial-gradient(circle_at_center,var(--theme)_1px,transparent_1.5px)] [background-size:18px_18px]"
-      />
 
-      <header className="relative z-10 flex items-center justify-between gap-3">
+      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3">
         <p className="text-[11px] font-semibold tracking-[0.22em] text-theme uppercase">
-          Mini App
+          Kingo
         </p>
         <div className="flex items-center gap-2">
           {auth.status === "ready" ? <WalletChip /> : null}
@@ -133,58 +171,73 @@ export function HomeScreen() {
         </div>
       </header>
 
-      <section className="relative z-10 flex flex-1 flex-col items-center justify-center text-center">
-        <div className="mb-6 grid size-20 place-items-center rounded-3xl bg-theme text-3xl font-extrabold text-on-theme shadow-[0_0_40px_color-mix(in_srgb,var(--theme)_45%,transparent)]">
-          K
-        </div>
+      <section className="relative z-10 mt-8 shrink-0 text-center">
         <h1 className="text-[2.35rem] leading-none font-extrabold tracking-tight text-foreground">
           Kingo Bingo
         </h1>
-        <p className="mt-3 max-w-[16rem] text-sm text-muted">
-          Call the numbers. Mark your card. Shout bingo in Telegram.
+        <p className="mt-3 text-sm text-muted">
+          Pick a room, claim a cartela, play for the pot.
         </p>
-
         {auth.status === "loading" ? (
-          <p className="mt-8 text-sm text-muted">Connecting to Telegram…</p>
+          <p className="mt-4 text-sm text-muted">Connecting…</p>
         ) : null}
-
         {auth.status === "error" ? (
-          <p className="mt-8 max-w-[18rem] text-sm text-muted">{auth.message}</p>
-        ) : null}
-
-        {auth.status === "ready" && auth.devFallback ? (
-          <p className="mt-8 rounded-full border border-theme/30 bg-surface px-3 py-1 text-[11px] font-medium text-theme">
-            Dev fallback — not in Telegram
-          </p>
-        ) : null}
-
-        {auth.status === "ready" && !auth.devFallback ? (
-          <p className="mt-8 text-sm text-muted">
-            Welcome back, {auth.user.first_name}.
-          </p>
-        ) : null}
-
-        {cartelas === "ready" ? (
-          <p className="mt-3 text-xs font-medium tracking-wide text-theme uppercase">
-            100 cartelas ready
-          </p>
+          <p className="mt-4 text-sm text-muted">{auth.message}</p>
         ) : null}
       </section>
 
-      <footer className="relative z-10 space-y-3">
-        <button
-          type="button"
-          disabled={auth.status !== "ready"}
-          onClick={() => router.push(`/play?code=${DEFAULT_ROOM_CODE}`)}
-          className="flex h-14 w-full items-center justify-center rounded-2xl bg-theme text-base font-bold text-on-theme disabled:opacity-45"
-        >
-          Play / Join room
-        </button>
-        <p className="text-center text-[11px] leading-relaxed text-muted">
-          Join {DEFAULT_ROOM_CODE}, pick one of 100 cartelas, and wait for the
-          round. Number calls come next.
-        </p>
-      </footer>
+      <section className="relative z-10 mt-8 min-h-0 flex-1 overflow-y-auto pb-4">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-muted uppercase">
+            Rooms
+          </p>
+          <p className="text-[11px] text-muted">{rooms.length} open</p>
+        </div>
+
+        {roomsError ? (
+          <p className="mb-3 text-xs text-theme">{roomsError}</p>
+        ) : null}
+
+        {auth.status === "ready" && rooms.length === 0 && !roomsError ? (
+          <p className="text-sm text-muted">Loading rooms…</p>
+        ) : null}
+
+        <div className="grid grid-cols-2 gap-3">
+          {rooms.map((room) => {
+            const busy = joining === room.code;
+            return (
+              <button
+                key={room.id}
+                type="button"
+                disabled={auth.status !== "ready" || Boolean(joining)}
+                onClick={() => void joinRoom(room.code)}
+                className="flex flex-col rounded-[1.35rem] bg-surface px-3.5 py-4 text-left transition-opacity disabled:opacity-45"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-extrabold tracking-wide text-foreground">
+                    {room.code}
+                  </p>
+                  <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-semibold text-theme uppercase">
+                    {roundLabel(room.roundStatus)}
+                  </span>
+                </div>
+                <p className="mt-3 text-2xl font-extrabold text-theme tabular-nums">
+                  {room.stake}
+                  <span className="ml-1 text-xs font-semibold text-muted">
+                    Br
+                  </span>
+                </p>
+                <p className="mt-1 text-[11px] text-muted">
+                  {room.players} playing · pot {room.pot} Br
+                </p>
+                <span className="mt-4 flex h-10 items-center justify-center rounded-xl bg-theme text-sm font-bold text-on-theme">
+                  {busy ? "Joining…" : "Join"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
     </main>
   );
 }

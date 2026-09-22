@@ -178,6 +178,63 @@ export async function loadRound(id: string) {
   return (await db.orm.Round.where({ id }).first()) as RoundRow | null;
 }
 
+export type RoomListItem = {
+  id: string;
+  code: string;
+  status: string;
+  stake: number;
+  players: number;
+  pot: number;
+  roundStatus: string | null;
+};
+
+const ROOM_CATALOG: Array<{ code: string; stake: number }> = [
+  { code: DEFAULT_ROOM_CODE, stake: DEFAULT_STAKE_BIRR },
+  { code: "QUICK", stake: 5 },
+  { code: "GOLD", stake: 20 },
+  { code: "VIP", stake: 50 },
+];
+
+async function ensureCatalogRooms() {
+  for (const entry of ROOM_CATALOG) {
+    const code = entry.code.trim().toUpperCase();
+    const existing = (await db.orm.Room.where({ code }).first()) as RoomRow | null;
+    if (!existing) {
+      await db.orm.Room.create({
+        id: newId(),
+        code,
+        status: "waiting",
+        stake: entry.stake,
+      } as Parameters<typeof db.orm.Room.create>[0]);
+    }
+    const room = (await db.orm.Room.where({ code }).first()) as RoomRow;
+    await ensureCurrentRound(room.id);
+  }
+}
+
+export async function listRooms(): Promise<RoomListItem[]> {
+  await ensureCatalogRooms();
+
+  const rooms = (await db.orm.Room.all()) as RoomRow[];
+  const items: RoomListItem[] = [];
+
+  for (const room of rooms) {
+    const round = await findCurrentRound(room.id);
+    const cards = round ? await loadPlayerCards(round.id) : [];
+    items.push({
+      id: room.id,
+      code: room.code,
+      status: room.status,
+      stake: roomStake(room),
+      players: cards.length,
+      pot: potFromCards(cards),
+      roundStatus: round?.status ?? null,
+    });
+  }
+
+  return items.sort((a, b) => a.stake - b.stake || a.code.localeCompare(b.code));
+}
+
 export async function getLobbyState(
   room: RoomRow,
   round: RoundRow,

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 export function BalanceSheet({
@@ -14,11 +16,16 @@ export function BalanceSheet({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
 
-  if (!open) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  return (
-    <div className="fixed inset-0 z-40">
+  if (!open || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100]">
       <button
         type="button"
         aria-label="Close wallet"
@@ -64,6 +71,7 @@ export function BalanceSheet({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

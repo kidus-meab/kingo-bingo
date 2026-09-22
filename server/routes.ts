@@ -21,6 +21,7 @@ import {
   getMyCard,
   getRoundCartelas,
   joinRoom,
+  listRooms,
   loadRound,
   RoomError,
 } from "@/lib/rooms";
@@ -89,6 +90,16 @@ api.get("/cartelas", async (c) => {
       },
       500,
     );
+  }
+});
+
+api.get("/rooms", async (c) => {
+  try {
+    await requireUser(c.req.raw);
+    const rooms = await listRooms();
+    return c.json({ rooms });
+  } catch (error) {
+    return apiError(error);
   }
 });
 

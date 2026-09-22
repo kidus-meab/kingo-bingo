@@ -402,41 +402,62 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
       </header>
 
       {view === "picker" ? (
-        <section className="px-4 pb-3">
-          <div className="rounded-2xl bg-surface px-4 py-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-muted uppercase">
-                Room {lobby.room.code}
-              </p>
-              <p className="text-[11px] font-semibold text-theme uppercase">
+        <section className="px-4 pb-2">
+          <div className="rounded-2xl bg-surface px-3.5 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-extrabold tracking-tight text-foreground">
+                {lobby.room.code}
+              </h2>
+              <p className="text-xs font-semibold text-theme">
                 {waiting
                   ? countdown != null
-                    ? `Hop-in ${countdown}s`
+                    ? `${countdown}s`
                     : "Waiting"
                   : status}
               </p>
             </div>
+
             {waiting && countdown != null ? (
-              <p className="mt-2 text-center text-3xl font-extrabold text-theme tabular-nums">
+              <p className="mt-1.5 text-center text-2xl font-extrabold text-theme tabular-nums">
                 {countdown}
               </p>
             ) : null}
-            <p className="mt-2 text-sm text-foreground">
-              Stake {lobby.room.stake} Br · Pot {lobby.round.pot} Br ·{" "}
-              {lobby.players.filter((player) => player.cartelaIndex).length} of{" "}
-              {lobby.players.length} picked
+
+            <p className="mt-2 text-xs text-muted">
+              <span className="font-semibold text-foreground">
+                {lobby.room.stake} Br
+              </span>{" "}
+              stake
+              <span className="mx-1.5 text-foreground/30">·</span>
+              <span className="font-semibold text-theme">
+                {lobby.round.pot} Br
+              </span>{" "}
+              pot
+              <span className="mx-1.5 text-foreground/30">·</span>
+              <span className="font-semibold text-foreground">
+                {lobby.players.filter((player) => player.cartelaIndex).length}/
+                {lobby.players.length}
+              </span>{" "}
+              cards
             </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {lobby.players.map((player) => (
-                <span
-                  key={player.id}
-                  className="rounded-full bg-background px-2.5 py-1 text-xs text-foreground"
-                >
-                  {player.firstName}
-                  {player.cartelaIndex ? ` · #${player.cartelaIndex}` : " · picking"}
-                </span>
-              ))}
-            </div>
+
+            {lobby.players.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {lobby.players.map((player) => (
+                  <span
+                    key={player.id}
+                    className="rounded-lg bg-background px-2 py-1 text-xs text-foreground"
+                  >
+                    <span className="font-semibold">{player.firstName}</span>
+                    <span className="text-muted">
+                      {player.cartelaIndex
+                        ? ` #${player.cartelaIndex}`
+                        : " …"}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
           {error ? <p className="mt-2 text-xs text-theme">{error}</p> : null}
         </section>

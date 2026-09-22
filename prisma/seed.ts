@@ -2,12 +2,46 @@ import "dotenv/config";
 
 import {
   CARTELA_COUNT,
+  DEFAULT_ROUND_PATTERN,
   generateUniqueCartelas,
   serializeCartelaCells,
 } from "../lib/bingo";
 import { DEFAULT_ROOM_CODE, DEFAULT_STAKE_BIRR } from "../lib/config";
 import { newId } from "../lib/ids";
 import { db } from "./db";
+
+const EXTRA_ROOMS: Array<{ code: string; stake: number }> = [
+  { code: "QUICK", stake: 5 },
+  { code: "GOLD", stake: 20 },
+  { code: "VIP", stake: 50 },
+];
+
+async function ensureRoom(code: string, stake: number) {
+  let room = await db.orm.Room.where({ code }).first();
+  if (!room) {
+    room = await db.orm.Room.create({
+      id: newId(),
+      code,
+      status: "waiting",
+      stake,
+    });
+    console.log(`Seeded room ${code} (${stake} Br)`);
+  }
+
+  const rounds = (await db.orm.Round.where({ roomId: room.id }).all()) as Array<{
+    status: string;
+  }>;
+  const currentRound = rounds.find((round) => round.status !== "finished");
+  if (!currentRound) {
+    await db.orm.Round.create({
+      id: newId(),
+      roomId: room.id,
+      status: "pending",
+      pattern: DEFAULT_ROUND_PATTERN,
+    });
+    console.log(`Seeded pending round for ${code}`);
+  }
+}
 
 async function seed() {
   const existingCartelas = await db.orm.Cartela.select("id").all();
@@ -26,30 +60,9 @@ async function seed() {
     console.log(`Cartelas already present (${existingCartelas.length})`);
   }
 
-  let room = await db.orm.Room.where({ code: DEFAULT_ROOM_CODE }).first();
-  if (!room) {
-    room = await db.orm.Room.create({
-      id: newId(),
-      code: DEFAULT_ROOM_CODE,
-      status: "waiting",
-      stake: DEFAULT_STAKE_BIRR,
-    });
-    console.log(`Seeded default room ${DEFAULT_ROOM_CODE}`);
-  }
-
-  const rounds = (await db.orm.Round.where({ roomId: room.id }).all()) as Array<{
-    status: string;
-  }>;
-  const currentRound = rounds.find((round) => round.status !== "finished");
-
-  if (!currentRound) {
-    await db.orm.Round.create({
-      id: newId(),
-      roomId: room.id,
-      status: "pending",
-      pattern: "any_line",
-    });
-    console.log(`Seeded pending round for ${DEFAULT_ROOM_CODE}`);
+  await ensureRoom(DEFAULT_ROOM_CODE, DEFAULT_STAKE_BIRR);
+  for (const room of EXTRA_ROOMS) {
+    await ensureRoom(room.code, room.stake);
   }
 }
 
