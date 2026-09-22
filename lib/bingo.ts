@@ -19,12 +19,24 @@ export const CARTELA_SEED = 20260922;
 export type RoomStatus = "waiting" | "playing" | "finished";
 export type RoundStatus = "pending" | "drawing" | "checking" | "finished";
 export type WinPattern =
-  | "row"
-  | "column"
-  | "diagonal"
-  | "corners"
-  | "blackout"
-  | "any_line";
+  "row" | "column" | "diagonal" | "corners" | "blackout" | "any_line";
+
+export const WIN_PATTERNS = [
+  "row",
+  "column",
+  "diagonal",
+  "corners",
+  "blackout",
+] as const satisfies readonly WinPattern[];
+
+export const ANY_LINE_PATTERNS = [
+  "row",
+  "column",
+  "diagonal",
+] as const satisfies readonly WinPattern[];
+
+export const DEFAULT_ROUND_PATTERN: WinPattern = "any_line";
+export const DEFAULT_ROOM_CODE = "KINGO";
 
 export type BingoCells = number[];
 
@@ -126,7 +138,9 @@ export function assertValidCartela(cells: BingoCells) {
     const column = COLUMNS[colIndex]!;
     const [from, to] = COLUMN_RANGES[column];
     if (value < from || value > to) {
-      throw new Error(`Cell ${i} value ${value} is outside ${column} ${from}–${to}`);
+      throw new Error(
+        `Cell ${i} value ${value} is outside ${column} ${from}–${to}`,
+      );
     }
   }
 }
@@ -134,4 +148,122 @@ export function assertValidCartela(cells: BingoCells) {
 export function serializeCartelaCells(cells: BingoCells) {
   assertValidCartela(cells);
   return JSON.stringify(cells);
+}
+
+export const BALL_MIN = 1;
+export const BALL_MAX = 75;
+export const AUTO_DRAW_MS = 6000;
+export const CO_WIN_MS = 4000;
+
+export function columnForNumber(value: number): BingoColumn | null {
+  for (const column of COLUMNS) {
+    const [from, to] = COLUMN_RANGES[column];
+    if (value >= from && value <= to) return column;
+  }
+  return null;
+}
+
+export function formatBall(value: number) {
+  const column = columnForNumber(value);
+  return column ? `${column}${value}` : String(value);
+}
+
+export function marksForCells(cells: BingoCells, called: Iterable<number>) {
+  const set = new Set(called);
+  return cells.map((value, index) => {
+    if (index === CENTER_INDEX || value === FREE_CELL) return true;
+    return set.has(value);
+  });
+}
+
+function rowComplete(marks: boolean[], row: number) {
+  const start = row * GRID_SIZE;
+  return Array.from({ length: GRID_SIZE }, (_, col) => marks[start + col]).every(
+    Boolean,
+  );
+}
+
+function columnComplete(marks: boolean[], col: number) {
+  return Array.from(
+    { length: GRID_SIZE },
+    (_, row) => marks[row * GRID_SIZE + col],
+  ).every(Boolean);
+}
+
+export function hasRow(marks: boolean[]) {
+  return Array.from({ length: GRID_SIZE }, (_, row) => rowComplete(marks, row)).some(
+    Boolean,
+  );
+}
+
+export function hasColumn(marks: boolean[]) {
+  return Array.from({ length: GRID_SIZE }, (_, col) => columnComplete(marks, col)).some(
+    Boolean,
+  );
+}
+
+export function hasDiagonal(marks: boolean[]) {
+  const main = Array.from(
+    { length: GRID_SIZE },
+    (_, i) => marks[i * GRID_SIZE + i],
+  ).every(Boolean);
+  const anti = Array.from(
+    { length: GRID_SIZE },
+    (_, i) => marks[i * GRID_SIZE + (GRID_SIZE - 1 - i)],
+  ).every(Boolean);
+  return main || anti;
+}
+
+export function hasCorners(marks: boolean[]) {
+  const last = GRID_SIZE - 1;
+  return Boolean(
+    marks[0] &&
+      marks[last] &&
+      marks[last * GRID_SIZE] &&
+      marks[last * GRID_SIZE + last],
+  );
+}
+
+export function hasBlackout(marks: boolean[]) {
+  return marks.length === CELL_COUNT && marks.every(Boolean);
+}
+
+export function findWinningPatterns(marks: boolean[]): WinPattern[] {
+  const found: WinPattern[] = [];
+  if (hasRow(marks)) found.push("row");
+  if (hasColumn(marks)) found.push("column");
+  if (hasDiagonal(marks)) found.push("diagonal");
+  if (hasCorners(marks)) found.push("corners");
+  if (hasBlackout(marks)) found.push("blackout");
+  return found;
+}
+
+export function enabledPatterns(roundPattern: string): WinPattern[] {
+  if (roundPattern === "any_line") return [...ANY_LINE_PATTERNS];
+  if ((WIN_PATTERNS as readonly string[]).includes(roundPattern)) {
+    return [roundPattern as WinPattern];
+  }
+  return [...ANY_LINE_PATTERNS];
+}
+
+export function matchedPatterns(marks: boolean[], roundPattern: string) {
+  const enabled = new Set(enabledPatterns(roundPattern));
+  return findWinningPatterns(marks).filter((pattern) => enabled.has(pattern));
+}
+
+export function patternLabel(pattern: string) {
+  switch (pattern) {
+    case "row":
+      return "a row";
+    case "column":
+      return "a column";
+    case "diagonal":
+      return "a diagonal";
+    case "corners":
+      return "four corners";
+    case "blackout":
+      return "blackout";
+    default:
+      return pattern.replaceAll("_", " ");
+  }
 }

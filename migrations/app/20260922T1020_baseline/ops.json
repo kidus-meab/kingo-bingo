@@ -1,0 +1,658 @@
+[
+  {
+    "id": "table.calledNumber",
+    "label": "Create table calledNumber",
+    "summary": "Creates table calledNumber with required columns",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "table",
+        "name": "calledNumber"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"calledNumber\" does not exist",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "table",
+          "calledNumber"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"calledNumber\"",
+        "sql": "CREATE TABLE \"calledNumber\" (\n  \"calledAt\" TEXT NOT NULL DEFAULT (datetime('now')),\n  \"id\" TEXT NOT NULL,\n  \"order\" INTEGER NOT NULL,\n  \"roundId\" TEXT NOT NULL,\n  \"value\" INTEGER NOT NULL,\n  PRIMARY KEY (\"id\"),\n  UNIQUE (\"roundId\", \"value\"),\n  FOREIGN KEY (\"roundId\") REFERENCES \"round\" (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"calledNumber\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "table",
+          "calledNumber"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.cartela",
+    "label": "Create table cartela",
+    "summary": "Creates table cartela with required columns",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "table",
+        "name": "cartela"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"cartela\" does not exist",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "table",
+          "cartela"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"cartela\"",
+        "sql": "CREATE TABLE \"cartela\" (\n  \"cells\" TEXT NOT NULL,\n  \"id\" TEXT NOT NULL,\n  \"index\" INTEGER NOT NULL,\n  PRIMARY KEY (\"id\"),\n  UNIQUE (\"index\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"cartela\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "table",
+          "cartela"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.playerCard",
+    "label": "Create table playerCard",
+    "summary": "Creates table playerCard with required columns",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "table",
+        "name": "playerCard"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"playerCard\" does not exist",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "table",
+          "playerCard"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"playerCard\"",
+        "sql": "CREATE TABLE \"playerCard\" (\n  \"cartelaId\" TEXT NOT NULL,\n  \"id\" TEXT NOT NULL,\n  \"roundId\" TEXT NOT NULL,\n  \"userId\" TEXT NOT NULL,\n  PRIMARY KEY (\"id\"),\n  UNIQUE (\"roundId\", \"userId\"),\n  UNIQUE (\"roundId\", \"cartelaId\"),\n  FOREIGN KEY (\"roundId\") REFERENCES \"round\" (\"id\"),\n  FOREIGN KEY (\"userId\") REFERENCES \"user\" (\"id\"),\n  FOREIGN KEY (\"cartelaId\") REFERENCES \"cartela\" (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"playerCard\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "table",
+          "playerCard"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.room",
+    "label": "Create table room",
+    "summary": "Creates table room with required columns",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "table",
+        "name": "room"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"room\" does not exist",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "table",
+          "room"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"room\"",
+        "sql": "CREATE TABLE \"room\" (\n  \"code\" TEXT NOT NULL,\n  \"createdAt\" TEXT NOT NULL DEFAULT (datetime('now')),\n  \"hostUserId\" TEXT,\n  \"id\" TEXT NOT NULL,\n  \"status\" TEXT NOT NULL,\n  PRIMARY KEY (\"id\"),\n  UNIQUE (\"code\"),\n  FOREIGN KEY (\"hostUserId\") REFERENCES \"user\" (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"room\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "table",
+          "room"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.round",
+    "label": "Create table round",
+    "summary": "Creates table round with required columns",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "table",
+        "name": "round"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"round\" does not exist",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "table",
+          "round"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"round\"",
+        "sql": "CREATE TABLE \"round\" (\n  \"endedAt\" TEXT,\n  \"id\" TEXT NOT NULL,\n  \"pattern\" TEXT NOT NULL,\n  \"roomId\" TEXT NOT NULL,\n  \"startedAt\" TEXT,\n  \"status\" TEXT NOT NULL,\n  PRIMARY KEY (\"id\"),\n  FOREIGN KEY (\"roomId\") REFERENCES \"room\" (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"round\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "table",
+          "round"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.user",
+    "label": "Create table user",
+    "summary": "Creates table user with required columns",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "table",
+        "name": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"user\" does not exist",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "table",
+          "user"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"user\"",
+        "sql": "CREATE TABLE \"user\" (\n  \"createdAt\" TEXT NOT NULL DEFAULT (datetime('now')),\n  \"firstName\" TEXT NOT NULL,\n  \"id\" TEXT NOT NULL,\n  \"photoUrl\" TEXT,\n  \"telegramId\" TEXT NOT NULL,\n  \"username\" TEXT,\n  PRIMARY KEY (\"id\"),\n  UNIQUE (\"telegramId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"user\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "table",
+          "user"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.win",
+    "label": "Create table win",
+    "summary": "Creates table win with required columns",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "table",
+        "name": "win"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"win\" does not exist",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "table",
+          "win"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"win\"",
+        "sql": "CREATE TABLE \"win\" (\n  \"claimedAt\" TEXT NOT NULL DEFAULT (datetime('now')),\n  \"id\" TEXT NOT NULL,\n  \"pattern\" TEXT NOT NULL,\n  \"playerCardId\" TEXT NOT NULL,\n  \"roundId\" TEXT NOT NULL,\n  \"userId\" TEXT NOT NULL,\n  PRIMARY KEY (\"id\"),\n  FOREIGN KEY (\"roundId\") REFERENCES \"round\" (\"id\"),\n  FOREIGN KEY (\"userId\") REFERENCES \"user\" (\"id\"),\n  FOREIGN KEY (\"playerCardId\") REFERENCES \"playerCard\" (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"win\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "table",
+          "win"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.calledNumber.calledNumber_roundId_idx_b7564116",
+    "label": "Create index calledNumber_roundId_idx_b7564116 on calledNumber",
+    "summary": "Creates index calledNumber_roundId_idx_b7564116 on calledNumber",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "index",
+        "name": "calledNumber_roundId_idx_b7564116",
+        "table": "calledNumber"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"calledNumber_roundId_idx_b7564116\" is missing",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "calledNumber_roundId_idx_b7564116"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"calledNumber_roundId_idx_b7564116\"",
+        "sql": "CREATE INDEX \"calledNumber_roundId_idx_b7564116\" ON \"calledNumber\" (\"roundId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"calledNumber_roundId_idx_b7564116\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "calledNumber_roundId_idx_b7564116"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.playerCard.playerCard_cartelaId_idx_13e8608d",
+    "label": "Create index playerCard_cartelaId_idx_13e8608d on playerCard",
+    "summary": "Creates index playerCard_cartelaId_idx_13e8608d on playerCard",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "index",
+        "name": "playerCard_cartelaId_idx_13e8608d",
+        "table": "playerCard"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"playerCard_cartelaId_idx_13e8608d\" is missing",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "playerCard_cartelaId_idx_13e8608d"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"playerCard_cartelaId_idx_13e8608d\"",
+        "sql": "CREATE INDEX \"playerCard_cartelaId_idx_13e8608d\" ON \"playerCard\" (\"cartelaId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"playerCard_cartelaId_idx_13e8608d\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "playerCard_cartelaId_idx_13e8608d"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.playerCard.playerCard_roundId_idx_b7564116",
+    "label": "Create index playerCard_roundId_idx_b7564116 on playerCard",
+    "summary": "Creates index playerCard_roundId_idx_b7564116 on playerCard",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "index",
+        "name": "playerCard_roundId_idx_b7564116",
+        "table": "playerCard"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"playerCard_roundId_idx_b7564116\" is missing",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "playerCard_roundId_idx_b7564116"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"playerCard_roundId_idx_b7564116\"",
+        "sql": "CREATE INDEX \"playerCard_roundId_idx_b7564116\" ON \"playerCard\" (\"roundId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"playerCard_roundId_idx_b7564116\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "playerCard_roundId_idx_b7564116"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.playerCard.playerCard_userId_idx_a489d58a",
+    "label": "Create index playerCard_userId_idx_a489d58a on playerCard",
+    "summary": "Creates index playerCard_userId_idx_a489d58a on playerCard",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "index",
+        "name": "playerCard_userId_idx_a489d58a",
+        "table": "playerCard"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"playerCard_userId_idx_a489d58a\" is missing",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "playerCard_userId_idx_a489d58a"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"playerCard_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"playerCard_userId_idx_a489d58a\" ON \"playerCard\" (\"userId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"playerCard_userId_idx_a489d58a\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "playerCard_userId_idx_a489d58a"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.room.room_hostUserId_idx_13a2bd65",
+    "label": "Create index room_hostUserId_idx_13a2bd65 on room",
+    "summary": "Creates index room_hostUserId_idx_13a2bd65 on room",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "index",
+        "name": "room_hostUserId_idx_13a2bd65",
+        "table": "room"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"room_hostUserId_idx_13a2bd65\" is missing",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "room_hostUserId_idx_13a2bd65"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"room_hostUserId_idx_13a2bd65\"",
+        "sql": "CREATE INDEX \"room_hostUserId_idx_13a2bd65\" ON \"room\" (\"hostUserId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"room_hostUserId_idx_13a2bd65\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "room_hostUserId_idx_13a2bd65"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.round.round_roomId_idx_fe51d647",
+    "label": "Create index round_roomId_idx_fe51d647 on round",
+    "summary": "Creates index round_roomId_idx_fe51d647 on round",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "index",
+        "name": "round_roomId_idx_fe51d647",
+        "table": "round"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"round_roomId_idx_fe51d647\" is missing",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "round_roomId_idx_fe51d647"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"round_roomId_idx_fe51d647\"",
+        "sql": "CREATE INDEX \"round_roomId_idx_fe51d647\" ON \"round\" (\"roomId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"round_roomId_idx_fe51d647\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "round_roomId_idx_fe51d647"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.win.win_playerCardId_idx_69f2cb48",
+    "label": "Create index win_playerCardId_idx_69f2cb48 on win",
+    "summary": "Creates index win_playerCardId_idx_69f2cb48 on win",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "index",
+        "name": "win_playerCardId_idx_69f2cb48",
+        "table": "win"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"win_playerCardId_idx_69f2cb48\" is missing",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "win_playerCardId_idx_69f2cb48"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"win_playerCardId_idx_69f2cb48\"",
+        "sql": "CREATE INDEX \"win_playerCardId_idx_69f2cb48\" ON \"win\" (\"playerCardId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"win_playerCardId_idx_69f2cb48\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "win_playerCardId_idx_69f2cb48"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.win.win_roundId_idx_b7564116",
+    "label": "Create index win_roundId_idx_b7564116 on win",
+    "summary": "Creates index win_roundId_idx_b7564116 on win",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "index",
+        "name": "win_roundId_idx_b7564116",
+        "table": "win"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"win_roundId_idx_b7564116\" is missing",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "win_roundId_idx_b7564116"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"win_roundId_idx_b7564116\"",
+        "sql": "CREATE INDEX \"win_roundId_idx_b7564116\" ON \"win\" (\"roundId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"win_roundId_idx_b7564116\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "win_roundId_idx_b7564116"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.win.win_userId_idx_a489d58a",
+    "label": "Create index win_userId_idx_a489d58a on win",
+    "summary": "Creates index win_userId_idx_a489d58a on win",
+    "operationClass": "additive",
+    "target": {
+      "id": "sqlite",
+      "details": {
+        "schema": "main",
+        "objectType": "index",
+        "name": "win_userId_idx_a489d58a",
+        "table": "win"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"win_userId_idx_a489d58a\" is missing",
+        "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "win_userId_idx_a489d58a"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"win_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"win_userId_idx_a489d58a\" ON \"win\" (\"userId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"win_userId_idx_a489d58a\" exists",
+        "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+        "params": [
+          "index",
+          "win_userId_idx_a489d58a"
+        ]
+      }
+    ]
+  }
+]

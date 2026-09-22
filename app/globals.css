@@ -2,7 +2,7 @@
 
 :root {
   /* Change this one value to restyle the whole app. */
-  --theme: #61f029;
+  --theme: #f0b429;
 
   --background: color-mix(in srgb, var(--theme) 9%, #100c08);
   --surface: color-mix(in srgb, var(--theme) 16%, #1a140e);
@@ -29,6 +29,7 @@ html,
 body {
   min-height: 100dvh;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {

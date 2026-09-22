@@ -6,7 +6,7 @@ import type { Contract } from "./contract.d";
 import contractJson from "./contract.json" with { type: "json" };
 
 function sqlitePath() {
-  const raw = (process.env.DATABASE_URL ?? "file:./prisma/dev.db").replace(
+  const raw = (process.env.DATABASE_URL ?? "file:./prisma/kingo.db").replace(
     /^file:/,
     "",
   );

@@ -10,6 +10,19 @@ type TelegramWebAppUser = {
   photo_url?: string;
 };
 
+type TelegramBackButton = {
+  isVisible: boolean;
+  show: () => void;
+  hide: () => void;
+  onClick: (callback: () => void) => void;
+  offClick: (callback: () => void) => void;
+};
+
+type TelegramHapticFeedback = {
+  impactOccurred: (style: "light" | "medium" | "heavy" | "rigid" | "soft") => void;
+  notificationOccurred: (type: "error" | "success" | "warning") => void;
+};
+
 type TelegramWebApp = {
   initData: string;
   initDataUnsafe: {
@@ -21,6 +34,9 @@ type TelegramWebApp = {
   expand: () => void;
   setHeaderColor: (color: string) => void;
   setBackgroundColor: (color: string) => void;
+  disableVerticalSwipes?: () => void;
+  BackButton?: TelegramBackButton;
+  HapticFeedback?: TelegramHapticFeedback;
 };
 
 declare global {

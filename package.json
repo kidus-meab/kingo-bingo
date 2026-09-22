@@ -8,10 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma skills sync || exit 0",
-    "prebuild": "prisma contract emit",
-    "db:emit": "prisma contract emit",
-    "db:init": "prisma contract emit && prisma db init",
-    "db:migrate": "prisma contract emit && prisma migration plan && prisma db migrate",
+    "prebuild": "node scripts/prisma.mjs contract emit",
+    "db:emit": "node scripts/prisma.mjs contract emit",
+    "db:init": "node scripts/prisma.mjs contract emit && node scripts/prisma.mjs db init",
+    "db:migrate": "node scripts/prisma.mjs contract emit && node scripts/prisma.mjs migration plan && node scripts/prisma.mjs db migrate",
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {

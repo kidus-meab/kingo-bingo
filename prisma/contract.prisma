@@ -1,7 +1,7 @@
 // use prisma-8
 
 model User {
-  id          String   @id @default(cuid(2))
+  id          String   @id
   telegramId  String   @unique
   firstName   String
   username    String?
@@ -13,7 +13,7 @@ model User {
 }
 
 model Room {
-  id         String   @id @default(cuid(2))
+  id         String   @id
   code       String   @unique
   status     String
   createdAt  DateTime @default(now())
@@ -23,7 +23,7 @@ model Room {
 }
 
 model Round {
-  id            String        @id @default(cuid(2))
+  id            String        @id
   roomId        String
   room          Room          @relation(fields: [roomId], references: [id])
   status        String
@@ -36,14 +36,14 @@ model Round {
 }
 
 model Cartela {
-  id          String       @id @default(cuid(2))
+  id          String       @id
   index       Int          @unique
   cells       String
   playerCards PlayerCard[]
 }
 
 model PlayerCard {
-  id        String  @id @default(cuid(2))
+  id        String  @id
   roundId   String
   userId    String
   cartelaId String
@@ -57,7 +57,7 @@ model PlayerCard {
 }
 
 model CalledNumber {
-  id       String   @id @default(cuid(2))
+  id       String   @id
   roundId  String
   value    Int
   order    Int
@@ -68,7 +68,7 @@ model CalledNumber {
 }
 
 model Win {
-  id           String     @id @default(cuid(2))
+  id           String     @id
   roundId      String
   userId       String
   playerCardId String

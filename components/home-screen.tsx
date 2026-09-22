@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 
+import { useRouter } from "next/navigation";
+
+import { UserChip } from "@/components/user-chip";
+import { DEFAULT_ROOM_CODE } from "@/lib/bingo";
 import { getTelegramInitData, type TelegramUser } from "@/lib/telegram";
 
 const DEV_FALLBACK_USER: TelegramUser = {
@@ -16,12 +20,12 @@ type AuthState =
   | { status: "ready"; user: TelegramUser; devFallback: boolean }
   | { status: "error"; message: string };
 
-function initials(name: string) {
-  return name.trim().slice(0, 1).toUpperCase() || "K";
-}
+type CartelaStatus = "unknown" | "ready" | "missing";
 
 export function HomeScreen() {
+  const router = useRouter();
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
+  const [cartelas, setCartelas] = useState<CartelaStatus>("unknown");
 
   useEffect(() => {
     const initData = getTelegramInitData();
@@ -85,6 +89,28 @@ export function HomeScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCartelas() {
+      try {
+        const response = await fetch("/api/cartelas");
+        const payload = (await response.json()) as { count?: number };
+        if (!cancelled) {
+          setCartelas(payload.count === 100 ? "ready" : "missing");
+        }
+      } catch {
+        if (!cancelled) setCartelas("missing");
+      }
+    }
+
+    void loadCartelas();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <main className="relative flex min-h-dvh flex-col overflow-hidden bg-background px-5 py-6">
       <div
@@ -133,46 +159,28 @@ export function HomeScreen() {
             Welcome back, {auth.user.first_name}.
           </p>
         ) : null}
+
+        {cartelas === "ready" ? (
+          <p className="mt-3 text-xs font-medium tracking-wide text-theme uppercase">
+            100 cartelas ready
+          </p>
+        ) : null}
       </section>
 
       <footer className="relative z-10 space-y-3">
         <button
           type="button"
-          disabled
-          className="flex h-14 w-full items-center justify-center rounded-2xl bg-theme text-base font-bold text-on-theme opacity-45"
+          disabled={auth.status !== "ready"}
+          onClick={() => router.push(`/play?code=${DEFAULT_ROOM_CODE}`)}
+          className="flex h-14 w-full items-center justify-center rounded-2xl bg-theme text-base font-bold text-on-theme disabled:opacity-45"
         >
           Play / Join room
         </button>
         <p className="text-center text-[11px] leading-relaxed text-muted">
-          Gameplay comes in a later step. Rooms, cartelas, and number calls are
-          not live yet.
+          Join {DEFAULT_ROOM_CODE}, pick one of 100 cartelas, and wait for the
+          round. Number calls come next.
         </p>
       </footer>
     </main>
-  );
-}
-
-function UserChip({ user }: { user: TelegramUser }) {
-  return (
-    <div className="flex items-center gap-2 rounded-full bg-surface py-1 pr-3 pl-1">
-      {user.photo_url ? (
-        // Telegram CDN avatars; next/image is not configured for that host.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={user.photo_url}
-          alt=""
-          width={28}
-          height={28}
-          className="size-7 rounded-full object-cover"
-        />
-      ) : (
-        <span className="grid size-7 place-items-center rounded-full bg-theme text-xs font-bold text-on-theme">
-          {initials(user.first_name)}
-        </span>
-      )}
-      <span className="max-w-28 truncate text-sm font-medium text-foreground">
-        {user.first_name}
-      </span>
-    </div>
   );
 }

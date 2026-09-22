@@ -66,6 +66,36 @@ export function bootstrapTelegramWebApp() {
 
   webApp.ready();
   webApp.expand();
+  webApp.disableVerticalSwipes?.();
   applyTelegramTheme();
   return true;
+}
+
+export function hapticImpact(style: "light" | "medium" | "heavy" = "medium") {
+  getTelegramWebApp()?.HapticFeedback?.impactOccurred(style);
+}
+
+export function hapticNotify(type: "error" | "success" | "warning") {
+  getTelegramWebApp()?.HapticFeedback?.notificationOccurred(type);
+}
+
+let backHandler: (() => void) | null = null;
+
+export function setTelegramBackButton(handler: (() => void) | null) {
+  const button = getTelegramWebApp()?.BackButton;
+  if (!button) return;
+
+  if (backHandler) {
+    button.offClick(backHandler);
+    backHandler = null;
+  }
+
+  if (!handler) {
+    button.hide();
+    return;
+  }
+
+  backHandler = handler;
+  button.onClick(handler);
+  button.show();
 }
