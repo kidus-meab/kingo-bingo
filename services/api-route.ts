@@ -1,5 +1,5 @@
-import { AuthError } from "@/lib/auth";
-import { RoomError } from "@/lib/rooms";
+import { AuthError } from "@/services/auth";
+import { RoomError } from "@/services/rooms";
 
 export function apiError(error: unknown) {
   if (error instanceof AuthError || error instanceof RoomError) {

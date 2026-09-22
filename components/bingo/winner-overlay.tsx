@@ -1,7 +1,7 @@
-import { BingoCard } from "@/components/bingo-card";
-import { UserChip } from "@/components/user-chip";
+import { BingoCard } from "@/components/bingo/bingo-card";
+import { UserChip } from "@/components/ui/user-chip";
 import { patternLabel } from "@/lib/bingo";
-import type { CalledBall, RoundWin } from "@/lib/game-types";
+import type { CalledBall, RoundWin } from "@/types/game";
 
 export function WinnerOverlay({
   wins,

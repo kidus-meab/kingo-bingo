@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 
-import { apiError, readJson } from "@/lib/api-route";
-import { requireUser } from "@/lib/auth";
+import { apiError, readJson } from "@/services/api-route";
+import { requireUser } from "@/services/auth";
 import { DEFAULT_ROOM_CODE } from "@/lib/bingo";
-import { getCartelas } from "@/lib/cartelas";
+import { getCartelas } from "@/services/cartelas";
 import {
   advanceRound,
   claimBingo,
@@ -12,7 +12,7 @@ import {
   markCell,
   startNewRound,
   startRound,
-} from "@/lib/round-play";
+} from "@/services/round-play";
 import {
   claimCartela,
   findCurrentRound,
@@ -24,16 +24,16 @@ import {
   listRooms,
   loadRound,
   RoomError,
-} from "@/lib/rooms";
+} from "@/services/rooms";
 import {
   InitDataError,
   validateTelegramInitData,
 } from "@/lib/validate-init-data";
-import { createDeposit, getWalletState } from "@/lib/wallet";
+import { createDeposit, getWalletState } from "@/services/wallet";
 import {
   listTransferPeers,
   sendTransfer,
-} from "@/lib/transfers";
+} from "@/services/transfers";
 
 const api = new Hono();
 

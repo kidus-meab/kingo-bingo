@@ -15,8 +15,8 @@ import {
   WINNER_MS,
   type WinPattern,
 } from "@/lib/bingo";
-import type { AppUser } from "@/lib/auth";
-import type { CalledBall, MyCard, RoundState, RoundWin } from "@/lib/game-types";
+import type { AppUser } from "@/services/auth";
+import type { CalledBall, MyCard, RoundState, RoundWin } from "@/types/game";
 import { newId } from "@/lib/ids";
 import { db } from "@/lib/prisma";
 import {
@@ -35,9 +35,9 @@ import {
   type CalledNumberRow,
   type PlayerCardRow,
   type RoundRow,
-} from "@/lib/rooms";
-import { getCartela } from "@/lib/cartelas";
-import { getUserBalance } from "@/lib/users";
+} from "@/services/rooms";
+import { getCartela } from "@/services/cartelas";
+import { getUserBalance } from "@/services/users";
 
 function toBall(row: CalledNumberRow): CalledBall {
   return {

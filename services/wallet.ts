@@ -1,24 +1,24 @@
 import { depositAccountSeeds, MIN_DEPOSIT_BIRR } from "@/lib/config";
 import { newId } from "@/lib/ids";
 import { db } from "@/lib/prisma";
-import { RoomError } from "@/lib/rooms";
+import { RoomError } from "@/services/rooms";
 import {
   listTransactions,
   recordTransaction,
-} from "@/lib/transactions";
-import { getUserRewardBalance } from "@/lib/users";
+} from "@/services/transactions";
+import { getUserRewardBalance } from "@/services/users";
 import type {
   DepositAccountPublic,
   DepositTx,
   WalletState,
-} from "@/lib/wallet-types";
+} from "@/types/wallet";
 
 export type {
   DepositAccountPublic,
   DepositTx,
   WalletState,
-} from "@/lib/wallet-types";
-export type { WalletTransaction } from "@/lib/transaction-types";
+} from "@/types/wallet";
+export type { WalletTransaction } from "@/types/wallet";
 
 type AccountRow = {
   id: string;

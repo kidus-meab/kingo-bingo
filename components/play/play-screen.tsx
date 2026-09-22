@@ -3,16 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { BingoCard } from "@/components/bingo-card";
-import { CalledBoard } from "@/components/called-board";
-import { LastCalled, RecentCalls } from "@/components/called-ball";
-import { UserChip } from "@/components/user-chip";
-import { WalletChip } from "@/components/wallet-chip";
-import { WinnerOverlay } from "@/components/winner-overlay";
+import { BingoCard } from "@/components/bingo/bingo-card";
+import { CalledBoard } from "@/components/bingo/called-board";
+import { LastCalled, RecentCalls } from "@/components/bingo/called-ball";
+import { UserChip } from "@/components/ui/user-chip";
+import { WalletChip } from "@/components/ui/wallet-chip";
+import { WinnerOverlay } from "@/components/bingo/winner-overlay";
 import { DEFAULT_ROOM_CODE } from "@/lib/bingo";
 import { LIVE_POLL_MS, LOBBY_POLL_MS } from "@/lib/config";
 import { apiFetch } from "@/lib/client-session";
-import type { LobbyState, MyCard, RoundCartela, RoundState } from "@/lib/game-types";
+import type { LobbyState, MyCard, RoundCartela, RoundState } from "@/types/game";
 import {
   hapticImpact,
   hapticNotify,

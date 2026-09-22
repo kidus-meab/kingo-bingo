@@ -9,17 +9,17 @@ import {
   WINNER_MS,
   type WinPattern,
 } from "@/lib/bingo";
-import { getCartela, getCartelas } from "@/lib/cartelas";
+import { getCartela, getCartelas } from "@/services/cartelas";
 import type {
   LobbyState,
   MyCard,
   PlayerSummary,
   RoundCartela,
-} from "@/lib/game-types";
+} from "@/types/game";
 import { newId } from "@/lib/ids";
 import { db } from "@/lib/prisma";
-import type { AppUser } from "@/lib/auth";
-import { getUserBalance } from "@/lib/users";
+import type { AppUser } from "@/services/auth";
+import { getUserBalance } from "@/services/users";
 
 export type { LobbyState, MyCard, PlayerSummary, RoundCartela };
 

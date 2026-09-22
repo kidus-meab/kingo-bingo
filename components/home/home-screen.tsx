@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { UserChip } from "@/components/user-chip";
-import { WalletChip } from "@/components/wallet-chip";
+import { UserChip } from "@/components/ui/user-chip";
+import { WalletChip } from "@/components/ui/wallet-chip";
 import { apiFetch } from "@/lib/client-session";
 import { getTelegramInitData, type TelegramUser } from "@/lib/telegram";
 

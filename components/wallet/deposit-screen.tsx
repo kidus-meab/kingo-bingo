@@ -3,14 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-import { UserChip } from "@/components/user-chip";
-import { WalletChip } from "@/components/wallet-chip";
+import { UserChip } from "@/components/ui/user-chip";
+import { WalletChip } from "@/components/ui/wallet-chip";
 import { MIN_DEPOSIT_BIRR } from "@/lib/config";
 import { apiFetch } from "@/lib/client-session";
 import type {
   DepositTx,
   WalletState,
-} from "@/lib/wallet-types";
+} from "@/types/wallet";
 import { setTelegramBackButton } from "@/lib/telegram";
 
 export function DepositScreen() {

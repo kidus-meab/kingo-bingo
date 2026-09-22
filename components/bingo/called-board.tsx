@@ -1,5 +1,5 @@
 import { COLUMN_RANGES, COLUMNS, formatBall } from "@/lib/bingo";
-import type { CalledBall } from "@/lib/game-types";
+import type { CalledBall } from "@/types/game";
 
 export function CalledBoard({ balls }: { balls: CalledBall[] }) {
   const called = new Set(balls.map((ball) => ball.value));

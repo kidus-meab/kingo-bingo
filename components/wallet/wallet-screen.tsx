@@ -3,15 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-import { UserChip } from "@/components/user-chip";
-import { WalletChip } from "@/components/wallet-chip";
+import { UserChip } from "@/components/ui/user-chip";
+import { WalletChip } from "@/components/ui/wallet-chip";
 import { apiFetch } from "@/lib/client-session";
 import { setTelegramBackButton } from "@/lib/telegram";
 import {
   transactionTitle,
   type WalletTransaction,
-} from "@/lib/transaction-types";
-import type { WalletState } from "@/lib/wallet-types";
+} from "@/types/wallet";
+import type { WalletState } from "@/types/wallet";
 
 const PAGE_SIZE = 12;
 

@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { BalanceSheet } from "@/components/balance-sheet";
+import { BalanceSheet } from "@/components/ui/balance-sheet";
 import { apiFetch } from "@/lib/client-session";
-import type { WalletState } from "@/lib/wallet-types";
+import type { WalletState } from "@/types/wallet";
 
 export function WalletChip({
   balance: balanceOverride,

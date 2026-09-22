@@ -1,6 +1,6 @@
 import { getDevUser } from "@/lib/dev-users";
 import type { TelegramUser } from "@/lib/telegram";
-import { getOrCreateUserFromTelegram } from "@/lib/users";
+import { getOrCreateUserFromTelegram } from "@/services/users";
 import {
   InitDataError,
   validateTelegramInitData,

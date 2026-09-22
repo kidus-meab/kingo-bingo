@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Mona_Sans } from "next/font/google";
 import Script from "next/script";
 
-import { TelegramBootstrap } from "@/components/telegram-bootstrap";
+import { TelegramBootstrap } from "@/components/ui/telegram-bootstrap";
 
 import "./globals.css";
 

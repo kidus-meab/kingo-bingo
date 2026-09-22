@@ -1,15 +1,11 @@
 import { MIN_TRANSFER_BIRR } from "@/lib/config";
 import { newId } from "@/lib/ids";
 import { db } from "@/lib/prisma";
-import { RoomError } from "@/lib/rooms";
-import { recordTransaction } from "@/lib/transactions";
+import { RoomError } from "@/services/rooms";
+import { recordTransaction } from "@/services/transactions";
+import type { TransferPeer } from "@/types/wallet";
 
-export type TransferPeer = {
-  id: string;
-  firstName: string;
-  username: string | null;
-  photoUrl: string | null;
-};
+export type { TransferPeer } from "@/types/wallet";
 
 export type TransferTx = {
   id: string;

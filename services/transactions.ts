@@ -3,13 +3,13 @@ import { db } from "@/lib/prisma";
 import type {
   TransactionType,
   WalletTransaction,
-} from "@/lib/transaction-types";
+} from "@/types/wallet";
 
 export type { TransactionType, WalletTransaction };
 export {
   transactionTitle,
   transactionSignedAmount,
-} from "@/lib/transaction-types";
+} from "@/types/wallet";
 
 type TransactionRow = {
   id: string;

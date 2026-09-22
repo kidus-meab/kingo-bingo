@@ -2,7 +2,7 @@ import { DEFAULT_BALANCE_BIRR, FIRST_REWARD_BIRR } from "@/lib/config";
 import { newId } from "@/lib/ids";
 import { db } from "@/lib/prisma";
 import type { TelegramUser } from "@/lib/telegram";
-import { recordTransaction } from "@/lib/transactions";
+import { recordTransaction } from "@/services/transactions";
 
 type UserRow = {
   id: string;

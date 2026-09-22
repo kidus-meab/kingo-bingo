@@ -1,4 +1,4 @@
-import type { CalledBall } from "@/lib/game-types";
+import type { CalledBall } from "@/types/game";
 
 export function LastCalled({ ball }: { ball: CalledBall | null }) {
   if (!ball) {
