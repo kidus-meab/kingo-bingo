@@ -17,7 +17,7 @@ import type {
 } from '@prisma/orm-sqlite/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'afb9a844e636d39bfb23b6c5dc24a82ca77cc906d9a9cfd5ab2e1d38c599c01a'>;
+  StorageHashBase<'b15fe6baa462b3b8e2f93a430e45468f09d595e02885e6fe9fdb815121bd1512'>;
 export type ExecutionHash = ExecutionHashBase<string>;
 export type ProfileHash =
   ProfileHashBase<'260b8608d1aacaf1f690779a6cff39a12947c599597c5ba464ca75b9e775df53'>;
@@ -185,13 +185,6 @@ export type FieldOutputTypes = {
       readonly startedAt: CodecTypes['sqlite/datetime@1']['output'] | null;
       readonly endedAt: CodecTypes['sqlite/datetime@1']['output'] | null;
     };
-    readonly Transfer: {
-      readonly id: CodecTypes['sqlite/text@1']['output'];
-      readonly fromUserId: CodecTypes['sqlite/text@1']['output'];
-      readonly toUserId: CodecTypes['sqlite/text@1']['output'];
-      readonly amount: CodecTypes['sqlite/integer@1']['output'];
-      readonly createdAt: CodecTypes['sqlite/datetime@1']['output'];
-    };
     readonly User: {
       readonly id: CodecTypes['sqlite/text@1']['output'];
       readonly telegramId: CodecTypes['sqlite/text@1']['output'];
@@ -270,13 +263,6 @@ export type FieldInputTypes = {
       readonly startingEndsAt: CodecTypes['sqlite/datetime@1']['input'] | null;
       readonly startedAt: CodecTypes['sqlite/datetime@1']['input'] | null;
       readonly endedAt: CodecTypes['sqlite/datetime@1']['input'] | null;
-    };
-    readonly Transfer: {
-      readonly id: CodecTypes['sqlite/text@1']['input'];
-      readonly fromUserId: CodecTypes['sqlite/text@1']['input'];
-      readonly toUserId: CodecTypes['sqlite/text@1']['input'];
-      readonly amount: CodecTypes['sqlite/integer@1']['input'];
-      readonly createdAt: CodecTypes['sqlite/datetime@1']['input'];
     };
     readonly User: {
       readonly id: CodecTypes['sqlite/text@1']['input'];
@@ -357,13 +343,6 @@ export type StorageColumnTypes = {
       readonly startingEndsAt: CodecTypes['sqlite/datetime@1']['output'] | null;
       readonly status: CodecTypes['sqlite/text@1']['output'];
     };
-    readonly transfer: {
-      readonly amount: CodecTypes['sqlite/integer@1']['output'];
-      readonly createdAt: CodecTypes['sqlite/datetime@1']['output'];
-      readonly fromUserId: CodecTypes['sqlite/text@1']['output'];
-      readonly id: CodecTypes['sqlite/text@1']['output'];
-      readonly toUserId: CodecTypes['sqlite/text@1']['output'];
-    };
     readonly user: {
       readonly balance: CodecTypes['sqlite/integer@1']['output'];
       readonly createdAt: CodecTypes['sqlite/datetime@1']['output'];
@@ -443,13 +422,6 @@ export type StorageColumnInputTypes = {
       readonly startingEndsAt: CodecTypes['sqlite/datetime@1']['input'] | null;
       readonly status: CodecTypes['sqlite/text@1']['input'];
     };
-    readonly transfer: {
-      readonly amount: CodecTypes['sqlite/integer@1']['input'];
-      readonly createdAt: CodecTypes['sqlite/datetime@1']['input'];
-      readonly fromUserId: CodecTypes['sqlite/text@1']['input'];
-      readonly id: CodecTypes['sqlite/text@1']['input'];
-      readonly toUserId: CodecTypes['sqlite/text@1']['input'];
-    };
     readonly user: {
       readonly balance: CodecTypes['sqlite/integer@1']['input'];
       readonly createdAt: CodecTypes['sqlite/datetime@1']['input'];
@@ -483,11 +455,8 @@ export namespace Models {
     deposits: Deposit[];
     hostedRooms: Room[];
     playerCards: PlayerCard[];
-    receivedTransfers: Transfer[];
-    sentTransfers: Transfer[];
     wins: Win[];
-    readonly [RelationKeys]?:
-      'deposits' | 'hostedRooms' | 'playerCards' | 'receivedTransfers' | 'sentTransfers' | 'wins';
+    readonly [RelationKeys]?: 'deposits' | 'hostedRooms' | 'playerCards' | 'wins';
   };
   export type Room = {
     id: CodecTypes['sqlite/text@1']['output'];
@@ -581,16 +550,6 @@ export namespace Models {
     user: User;
     readonly [RelationKeys]?: 'account' | 'user';
   };
-  export type Transfer = {
-    id: CodecTypes['sqlite/text@1']['output'];
-    fromUserId: CodecTypes['sqlite/text@1']['output'];
-    toUserId: CodecTypes['sqlite/text@1']['output'];
-    amount: CodecTypes['sqlite/integer@1']['output'];
-    createdAt: CodecTypes['sqlite/datetime@1']['output'];
-    fromUser: User;
-    toUser: User;
-    readonly [RelationKeys]?: 'fromUser' | 'toUser';
-  };
 }
 
 export declare const models: {
@@ -603,7 +562,6 @@ export declare const models: {
   Win: Models.Win;
   DepositAccount: Models.DepositAccount;
   Deposit: Models.Deposit;
-  Transfer: Models.Transfer;
 };
 
 export type TypeMaps = TypeMapsType<
@@ -1079,78 +1037,6 @@ type ContractBase = Omit<
                 },
               ];
             };
-            readonly transfer: {
-              columns: {
-                readonly id: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'sqlite/text@1';
-                  readonly nullable: false;
-                };
-                readonly fromUserId: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'sqlite/text@1';
-                  readonly nullable: false;
-                };
-                readonly toUserId: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'sqlite/text@1';
-                  readonly nullable: false;
-                };
-                readonly amount: {
-                  readonly nativeType: 'integer';
-                  readonly codecId: 'sqlite/integer@1';
-                  readonly nullable: false;
-                };
-                readonly createdAt: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'sqlite/datetime@1';
-                  readonly nullable: false;
-                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
-                };
-              };
-              primaryKey: { readonly columns: readonly ['id'] };
-              uniques: readonly [];
-              indexes: readonly [
-                {
-                  readonly name: 'transfer_fromUserId_idx_9c2ca0ee';
-                  readonly prefix: 'transfer_fromUserId_idx';
-                  readonly columns: readonly ['fromUserId'];
-                  readonly unique: false;
-                },
-                {
-                  readonly name: 'transfer_toUserId_idx_397e108f';
-                  readonly prefix: 'transfer_toUserId_idx';
-                  readonly columns: readonly ['toUserId'];
-                  readonly unique: false;
-                },
-              ];
-              foreignKeys: readonly [
-                {
-                  readonly source: {
-                    readonly namespaceId: '__unbound__' & NamespaceId;
-                    readonly tableName: 'transfer';
-                    readonly columns: readonly ['fromUserId'];
-                  };
-                  readonly target: {
-                    readonly namespaceId: '__unbound__' & NamespaceId;
-                    readonly tableName: 'user';
-                    readonly columns: readonly ['id'];
-                  };
-                },
-                {
-                  readonly source: {
-                    readonly namespaceId: '__unbound__' & NamespaceId;
-                    readonly tableName: 'transfer';
-                    readonly columns: readonly ['toUserId'];
-                  };
-                  readonly target: {
-                    readonly namespaceId: '__unbound__' & NamespaceId;
-                    readonly tableName: 'user';
-                    readonly columns: readonly ['id'];
-                  };
-                },
-              ];
-            };
             readonly user: {
               columns: {
                 readonly id: {
@@ -1337,10 +1223,6 @@ type ContractBase = Omit<
     readonly deposit: {
       readonly namespace: '__unbound__' & NamespaceId;
       readonly model: 'Deposit';
-    };
-    readonly transfer: {
-      readonly namespace: '__unbound__' & NamespaceId;
-      readonly model: 'Transfer';
     };
   };
   readonly domain: {
@@ -1819,67 +1701,6 @@ type ContractBase = Omit<
               };
             };
           };
-          readonly Transfer: {
-            readonly fields: {
-              readonly id: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'sqlite/text@1' };
-              };
-              readonly fromUserId: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'sqlite/text@1' };
-              };
-              readonly toUserId: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'sqlite/text@1' };
-              };
-              readonly amount: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'sqlite/integer@1' };
-              };
-              readonly createdAt: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'sqlite/datetime@1' };
-              };
-            };
-            readonly relations: {
-              readonly fromUser: {
-                readonly to: {
-                  readonly namespace: '__unbound__' & NamespaceId;
-                  readonly model: 'User';
-                };
-                readonly cardinality: 'N:1';
-                readonly nullable: false;
-                readonly on: {
-                  readonly localFields: readonly ['fromUserId'];
-                  readonly targetFields: readonly ['id'];
-                };
-              };
-              readonly toUser: {
-                readonly to: {
-                  readonly namespace: '__unbound__' & NamespaceId;
-                  readonly model: 'User';
-                };
-                readonly cardinality: 'N:1';
-                readonly nullable: false;
-                readonly on: {
-                  readonly localFields: readonly ['toUserId'];
-                  readonly targetFields: readonly ['id'];
-                };
-              };
-            };
-            readonly storage: {
-              readonly table: 'transfer';
-              readonly namespaceId: '__unbound__';
-              readonly fields: {
-                readonly id: { readonly column: 'id' };
-                readonly fromUserId: { readonly column: 'fromUserId' };
-                readonly toUserId: { readonly column: 'toUserId' };
-                readonly amount: { readonly column: 'amount' };
-                readonly createdAt: { readonly column: 'createdAt' };
-              };
-            };
-          };
           readonly User: {
             readonly fields: {
               readonly id: {
@@ -1943,28 +1764,6 @@ type ContractBase = Omit<
                 readonly on: {
                   readonly localFields: readonly ['id'];
                   readonly targetFields: readonly ['userId'];
-                };
-              };
-              readonly receivedTransfers: {
-                readonly to: {
-                  readonly namespace: '__unbound__' & NamespaceId;
-                  readonly model: 'Transfer';
-                };
-                readonly cardinality: '1:N';
-                readonly on: {
-                  readonly localFields: readonly ['id'];
-                  readonly targetFields: readonly ['toUserId'];
-                };
-              };
-              readonly sentTransfers: {
-                readonly to: {
-                  readonly namespace: '__unbound__' & NamespaceId;
-                  readonly model: 'Transfer';
-                };
-                readonly cardinality: '1:N';
-                readonly on: {
-                  readonly localFields: readonly ['id'];
-                  readonly targetFields: readonly ['fromUserId'];
                 };
               };
               readonly wins: {

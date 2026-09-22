@@ -11,6 +11,9 @@ model User {
   hostedRooms Room[]   @relation("RoomHost")
   playerCards PlayerCard[]
   wins        Win[]
+  deposits    Deposit[]
+  sentTransfers     Transfer[] @relation("TransferFrom")
+  receivedTransfers Transfer[] @relation("TransferTo")
 }
 
 model Room {
@@ -85,4 +88,37 @@ model Win {
   round        Round      @relation(fields: [roundId], references: [id])
   user         User       @relation(fields: [userId], references: [id])
   playerCard   PlayerCard @relation(fields: [playerCardId], references: [id])
+}
+
+model DepositAccount {
+  id            String    @id
+  label         String
+  bankName      String
+  accountName   String
+  accountNumber String
+  active        Int       @default(1)
+  sortOrder     Int       @default(0)
+  deposits      Deposit[]
+}
+
+model Deposit {
+  id         String         @id
+  userId     String
+  accountId  String
+  amount     Int
+  smsText    String
+  status     String
+  createdAt  DateTime       @default(now())
+  user       User           @relation(fields: [userId], references: [id])
+  account    DepositAccount @relation(fields: [accountId], references: [id])
+}
+
+model Transfer {
+  id         String   @id
+  fromUserId String
+  toUserId   String
+  amount     Int
+  createdAt  DateTime @default(now())
+  fromUser   User     @relation("TransferFrom", fields: [fromUserId], references: [id])
+  toUser     User     @relation("TransferTo", fields: [toUserId], references: [id])
 }

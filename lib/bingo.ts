@@ -13,8 +13,6 @@ export const GRID_SIZE = 5;
 export const CELL_COUNT = GRID_SIZE * GRID_SIZE;
 export const CENTER_INDEX = 12;
 export const FREE_CELL = 0;
-export const CARTELA_COUNT = 100;
-export const CARTELA_SEED = 20260922;
 
 export type RoomStatus = "waiting" | "playing" | "finished";
 export type RoundStatus =
@@ -39,8 +37,28 @@ export const ANY_LINE_PATTERNS = [
   "diagonal",
 ] as const satisfies readonly WinPattern[];
 
-export const DEFAULT_ROUND_PATTERN: WinPattern = "any_line";
-export const DEFAULT_ROOM_CODE = "KINGO";
+export {
+  AUTO_DRAW_MS,
+  BALL_MAX,
+  BALL_MIN,
+  CARTELA_COUNT,
+  CARTELA_SEED,
+  CO_WIN_MS,
+  DEFAULT_BALANCE_BIRR,
+  DEFAULT_ROOM_CODE,
+  DEFAULT_STAKE_BIRR,
+  HOP_IN_MS,
+  STARTING_MS,
+  WINNER_MS,
+} from "@/lib/config";
+
+import {
+  CARTELA_COUNT,
+  CARTELA_SEED,
+  DEFAULT_ROUND_PATTERN as ENV_ROUND_PATTERN,
+} from "@/lib/config";
+
+export const DEFAULT_ROUND_PATTERN = ENV_ROUND_PATTERN as WinPattern;
 
 export type BingoCells = number[];
 
@@ -153,19 +171,6 @@ export function serializeCartelaCells(cells: BingoCells) {
   assertValidCartela(cells);
   return JSON.stringify(cells);
 }
-
-export const BALL_MIN = 1;
-export const BALL_MAX = 75;
-export const AUTO_DRAW_MS = 6000;
-export const HOP_IN_MS = 30_000;
-export const STARTING_MS = 5_000;
-export const WINNER_MS = 5_000;
-/** Default entry stake in Birr for a room. */
-export const DEFAULT_STAKE_BIRR = 10;
-/** Starting wallet for new players (dev / first join). */
-export const DEFAULT_BALANCE_BIRR = 1000;
-/** @deprecated Co-winner window removed; kept for any stray imports. */
-export const CO_WIN_MS = 0;
 
 export function columnForNumber(value: number): BingoColumn | null {
   for (const column of COLUMNS) {

@@ -5,6 +5,7 @@ import {
   generateUniqueCartelas,
   serializeCartelaCells,
 } from "../lib/bingo";
+import { DEFAULT_ROOM_CODE, DEFAULT_STAKE_BIRR } from "../lib/config";
 import { newId } from "../lib/ids";
 import { db } from "./db";
 
@@ -25,15 +26,15 @@ async function seed() {
     console.log(`Cartelas already present (${existingCartelas.length})`);
   }
 
-  let room = await db.orm.Room.where({ code: "KINGO" }).first();
+  let room = await db.orm.Room.where({ code: DEFAULT_ROOM_CODE }).first();
   if (!room) {
     room = await db.orm.Room.create({
       id: newId(),
-      code: "KINGO",
+      code: DEFAULT_ROOM_CODE,
       status: "waiting",
-      stake: 10,
+      stake: DEFAULT_STAKE_BIRR,
     });
-    console.log("Seeded default room KINGO");
+    console.log(`Seeded default room ${DEFAULT_ROOM_CODE}`);
   }
 
   const rounds = (await db.orm.Round.where({ roomId: room.id }).all()) as Array<{
@@ -48,7 +49,7 @@ async function seed() {
       status: "pending",
       pattern: "any_line",
     });
-    console.log("Seeded pending round for KINGO");
+    console.log(`Seeded pending round for ${DEFAULT_ROOM_CODE}`);
   }
 }
 

@@ -4,12 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { BingoCard } from "@/components/bingo-card";
-import { BalanceSheet } from "@/components/balance-sheet";
 import { CalledBoard } from "@/components/called-board";
 import { LastCalled, RecentCalls } from "@/components/called-ball";
 import { UserChip } from "@/components/user-chip";
+import { WalletChip } from "@/components/wallet-chip";
 import { WinnerOverlay } from "@/components/winner-overlay";
 import { DEFAULT_ROOM_CODE } from "@/lib/bingo";
+import { LIVE_POLL_MS, LOBBY_POLL_MS } from "@/lib/config";
 import {
   apiFetch,
   getStoredDevUserId,
@@ -22,9 +23,6 @@ import {
   hapticNotify,
   setTelegramBackButton,
 } from "@/lib/telegram";
-
-const LOBBY_POLL_MS = 2000;
-const LIVE_POLL_MS = 1000;
 
 type View = "picker" | "card";
 
@@ -74,7 +72,6 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
   const [nextBusy, setNextBusy] = useState(false);
   const [markBusy, setMarkBusy] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
-  const [walletOpen, setWalletOpen] = useState(false);
   const lastBallRef = useRef<string | null>(null);
   const lastRoundIdRef = useRef<string | null>(null);
 
@@ -394,13 +391,7 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
           Kingo
         </button>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setWalletOpen(true)}
-            className="rounded-full bg-surface px-2.5 py-1 text-xs font-bold text-theme tabular-nums"
-          >
-            {(live?.me.balance ?? mine.balance) ?? 0} Br
-          </button>
+          <WalletChip balance={(live?.me.balance ?? mine.balance) ?? 0} />
           <UserChip
             user={{
               first_name: mine.firstName,

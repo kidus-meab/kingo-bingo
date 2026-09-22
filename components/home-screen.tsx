@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { UserChip } from "@/components/user-chip";
+import { WalletChip } from "@/components/wallet-chip";
 import { DEFAULT_ROOM_CODE } from "@/lib/bingo";
 import { getTelegramInitData, type TelegramUser } from "@/lib/telegram";
 
@@ -122,11 +123,14 @@ export function HomeScreen() {
         className="pointer-events-none absolute inset-0 opacity-[0.14] [background-image:radial-gradient(circle_at_center,var(--theme)_1px,transparent_1.5px)] [background-size:18px_18px]"
       />
 
-      <header className="relative z-10 flex items-center justify-between">
+      <header className="relative z-10 flex items-center justify-between gap-3">
         <p className="text-[11px] font-semibold tracking-[0.22em] text-theme uppercase">
           Mini App
         </p>
-        {auth.status === "ready" ? <UserChip user={auth.user} /> : <span />}
+        <div className="flex items-center gap-2">
+          {auth.status === "ready" ? <WalletChip /> : null}
+          {auth.status === "ready" ? <UserChip user={auth.user} /> : <span />}
+        </div>
       </header>
 
       <section className="relative z-10 flex flex-1 flex-col items-center justify-center text-center">

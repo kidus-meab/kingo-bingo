@@ -28,6 +28,12 @@ import {
   InitDataError,
   validateTelegramInitData,
 } from "@/lib/validate-init-data";
+import { createDeposit, getWalletState } from "@/lib/wallet";
+import {
+  listTransferPeers,
+  listTransfers,
+  sendTransfer,
+} from "@/lib/transfers";
 
 const api = new Hono();
 
@@ -241,6 +247,83 @@ api.post("/rounds/:id/bingo", async (c) => {
       initData: typeof body.initData === "string" ? body.initData : "",
     });
     return c.json(await claimBingo(c.req.param("id"), user));
+  } catch (error) {
+    return apiError(error);
+  }
+});
+
+api.get("/wallet", async (c) => {
+  try {
+    const user = await requireUser(c.req.raw);
+    return c.json(await getWalletState(user.id));
+  } catch (error) {
+    return apiError(error);
+  }
+});
+
+api.post("/deposits", async (c) => {
+  try {
+    const body = await readJson(c.req.raw);
+    const user = await requireUser(c.req.raw, {
+      initData: typeof body.initData === "string" ? body.initData : "",
+    });
+    const deposit = await createDeposit(user.id, {
+      amount: Number(body.amount),
+      smsText: typeof body.smsText === "string" ? body.smsText : "",
+      accountId: typeof body.accountId === "string" ? body.accountId : "",
+    });
+    return c.json({ deposit, wallet: await getWalletState(user.id) });
+  } catch (error) {
+    return apiError(error);
+  }
+});
+
+api.get("/send", async (c) => {
+  try {
+    const user = await requireUser(c.req.raw);
+    const wallet = await getWalletState(user.id);
+    const [peers, transfers] = await Promise.all([
+      listTransferPeers(user.id),
+      listTransfers(user.id),
+    ]);
+    return c.json({
+      balance: wallet.balance,
+      firstName: wallet.firstName,
+      photoUrl: wallet.photoUrl,
+      peers,
+      transfers,
+    });
+  } catch (error) {
+    return apiError(error);
+  }
+});
+
+api.post("/send", async (c) => {
+  try {
+    const body = await readJson(c.req.raw);
+    const user = await requireUser(c.req.raw, {
+      initData: typeof body.initData === "string" ? body.initData : "",
+    });
+    const sent = await sendTransfer(user.id, {
+      toUserId: typeof body.toUserId === "string" ? body.toUserId : undefined,
+      username: typeof body.username === "string" ? body.username : undefined,
+      amount: Number(body.amount),
+    });
+    const wallet = await getWalletState(user.id);
+    const [peers, transfers] = await Promise.all([
+      listTransferPeers(user.id),
+      listTransfers(user.id),
+    ]);
+    return c.json({
+      sent,
+      page: {
+        balance: wallet.balance,
+        firstName: wallet.firstName,
+        photoUrl: wallet.photoUrl,
+        peers,
+        transfers,
+      },
+    });
   } catch (error) {
     return apiError(error);
   }
