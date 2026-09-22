@@ -39,6 +39,11 @@ export function WinnerOverlay({
           {winner.cartelaIndex != null ? ` · Cartela #${winner.cartelaIndex}` : ""}
           {lastCalled ? ` · last ${lastCalled.label}` : ""}
         </p>
+        {(winner.payout ?? 0) > 0 ? (
+          <p className="mt-2 text-center text-lg font-extrabold text-theme tabular-nums">
+            +{winner.payout} Br
+          </p>
+        ) : null}
         {winner.cells ? (
           <div className="mx-auto mt-4 max-w-[14rem]">
             <BingoCard cells={winner.cells} compact />

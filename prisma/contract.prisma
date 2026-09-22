@@ -6,6 +6,7 @@ model User {
   firstName   String
   username    String?
   photoUrl    String?
+  balance     Int      @default(1000)
   createdAt   DateTime @default(now())
   hostedRooms Room[]   @relation("RoomHost")
   playerCards PlayerCard[]
@@ -16,6 +17,7 @@ model Room {
   id         String   @id
   code       String   @unique
   status     String
+  stake      Int      @default(10)
   createdAt  DateTime @default(now())
   hostUserId String?
   host       User?    @relation("RoomHost", fields: [hostUserId], references: [id])
@@ -51,6 +53,7 @@ model PlayerCard {
   cartelaId    String
   marks        String  @default("[]")
   disqualified Int     @default(0)
+  stakePaid    Int     @default(0)
   round        Round   @relation(fields: [roundId], references: [id])
   user         User    @relation(fields: [userId], references: [id])
   cartela      Cartela @relation(fields: [cartelaId], references: [id])
@@ -77,6 +80,7 @@ model Win {
   userId       String
   playerCardId String
   pattern      String
+  payout       Int        @default(0)
   claimedAt    DateTime   @default(now())
   round        Round      @relation(fields: [roundId], references: [id])
   user         User       @relation(fields: [userId], references: [id])

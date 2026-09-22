@@ -31,6 +31,7 @@ async function seed() {
       id: newId(),
       code: "KINGO",
       status: "waiting",
+      stake: 10,
     });
     console.log("Seeded default room KINGO");
   }

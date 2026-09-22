@@ -8,18 +8,20 @@ export type PlayerSummary = {
   cartelaId: string | null;
   cartelaIndex: number | null;
   disqualified?: boolean;
+  balance?: number;
 };
 
 export type LobbyState = {
-  room: { id: string; code: string; status: string };
+  room: { id: string; code: string; status: string; stake: number };
   round: {
     id: string;
     status: string;
     pattern: WinPattern;
     phaseEndsAt: string | null;
+    pot: number;
   };
   players: PlayerSummary[];
-  me: PlayerSummary;
+  me: PlayerSummary & { balance: number };
 };
 
 export type RoundCartela = {
@@ -56,20 +58,22 @@ export type RoundWin = {
   claimedAt: string;
   cartelaIndex?: number | null;
   cells?: BingoCells | null;
+  payout?: number;
 };
 
 export type RoundState = {
-  room: { id: string; code: string; status: string };
+  room: { id: string; code: string; status: string; stake: number };
   round: {
     id: string;
     status: string;
     pattern: WinPattern;
     phaseEndsAt: string | null;
+    pot: number;
   };
   calledNumbers: CalledBall[];
   lastCalled: CalledBall | null;
   players: PlayerSummary[];
-  me: PlayerSummary;
+  me: PlayerSummary & { balance: number };
   myCard: MyCard | null;
   wins: RoundWin[];
   checkingUntil: string | null;

@@ -1,3 +1,4 @@
+import { DEFAULT_BALANCE_BIRR } from "@/lib/bingo";
 import { newId } from "@/lib/ids";
 import { db } from "@/lib/prisma";
 import type { TelegramUser } from "@/lib/telegram";
@@ -15,6 +16,7 @@ export async function getOrCreateUserFromTelegram(user: TelegramUser) {
       firstName,
       username,
       photoUrl,
+      balance: DEFAULT_BALANCE_BIRR,
     },
     update: {
       firstName,
@@ -23,4 +25,23 @@ export async function getOrCreateUserFromTelegram(user: TelegramUser) {
     },
     conflictOn: { telegramId },
   });
+}
+
+export async function getUserBalance(userId: string): Promise<number> {
+  const row = (await db.orm.User.where({ id: userId }).first()) as {
+    balance?: number | null;
+  } | null;
+  return Number(row?.balance ?? 0);
+}
+
+export async function adjustBalance(userId: string, delta: number) {
+  const current = await getUserBalance(userId);
+  const next = current + delta;
+  if (next < 0) {
+    throw new Error("Insufficient balance");
+  }
+  await db.orm.User.where({ id: userId }).update({
+    balance: next,
+  } as { balance: number });
+  return next;
 }

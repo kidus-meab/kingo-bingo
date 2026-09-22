@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { BingoCard } from "@/components/bingo-card";
+import { BalanceSheet } from "@/components/balance-sheet";
 import { CalledBoard } from "@/components/called-board";
 import { LastCalled, RecentCalls } from "@/components/called-ball";
 import { UserChip } from "@/components/user-chip";
@@ -73,6 +74,7 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
   const [nextBusy, setNextBusy] = useState(false);
   const [markBusy, setMarkBusy] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [walletOpen, setWalletOpen] = useState(false);
   const lastBallRef = useRef<string | null>(null);
   const lastRoundIdRef = useRef<string | null>(null);
 
@@ -391,12 +393,21 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
         >
           Kingo
         </button>
-        <UserChip
-          user={{
-            first_name: mine.firstName,
-            photo_url: mine.photoUrl,
-          }}
-        />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setWalletOpen(true)}
+            className="rounded-full bg-surface px-2.5 py-1 text-xs font-bold text-theme tabular-nums"
+          >
+            {(live?.me.balance ?? mine.balance) ?? 0} Br
+          </button>
+          <UserChip
+            user={{
+              first_name: mine.firstName,
+              photo_url: mine.photoUrl,
+            }}
+          />
+        </div>
       </header>
 
       {view === "picker" ? (
@@ -420,8 +431,9 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
               </p>
             ) : null}
             <p className="mt-2 text-sm text-foreground">
+              Stake {lobby.room.stake} Br · Pot {lobby.round.pot} Br ·{" "}
               {lobby.players.filter((player) => player.cartelaIndex).length} of{" "}
-              {lobby.players.length} picked a cartela
+              {lobby.players.length} picked
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {lobby.players.map((player) => (
@@ -440,6 +452,8 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
       ) : (
         <p className="px-4 pb-2 text-center text-xs text-muted">
           Room {lobby.room.code}
+          {` · ${lobby.room.stake} Br`}
+          {` · Pot ${(live?.round.pot ?? lobby.round.pot) || 0} Br`}
           {shownCard ? ` · Cartela #${shownCard.index}` : ""}
           {waiting && countdown != null
             ? ` · ${countdown}s`
@@ -663,7 +677,7 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
                               ? `Release #${preview.index}`
                               : takenByOther
                                 ? "Already taken"
-                                : `Claim #${preview.index}`}
+                                : `Claim #${preview.index} · ${lobby.room.stake} Br`}
                         </button>
                       ) : null}
                     </>

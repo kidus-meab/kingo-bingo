@@ -1,6 +1,7 @@
 import {
   DEFAULT_ROOM_CODE,
   DEFAULT_ROUND_PATTERN,
+  DEFAULT_STAKE_BIRR,
   emptyMarks,
   HOP_IN_MS,
   parseMarks,
@@ -18,6 +19,7 @@ import type {
 import { newId } from "@/lib/ids";
 import { db } from "@/lib/prisma";
 import type { AppUser } from "@/lib/auth";
+import { getUserBalance } from "@/lib/users";
 
 export type { LobbyState, MyCard, PlayerSummary, RoundCartela };
 
@@ -35,6 +37,7 @@ export type RoomRow = {
   id: string;
   code: string;
   status: string;
+  stake?: number | null;
 };
 
 export type RoundRow = {
@@ -55,6 +58,7 @@ export type PlayerCardRow = {
   cartelaId: string;
   marks?: string | null;
   disqualified?: number | null;
+  stakePaid?: number | null;
 };
 
 export type CalledNumberRow = {
@@ -67,7 +71,7 @@ export type CalledNumberRow = {
 
 function asUser(row: unknown): AppUser | null {
   if (!row || typeof row !== "object") return null;
-  const value = row as Partial<AppUser>;
+  const value = row as Partial<AppUser> & { balance?: number | null };
   if (typeof value.id !== "string" || typeof value.firstName !== "string") {
     return null;
   }
@@ -77,6 +81,7 @@ function asUser(row: unknown): AppUser | null {
     firstName: value.firstName,
     username: value.username ?? null,
     photoUrl: value.photoUrl ?? null,
+    balance: Number(value.balance ?? 0),
   };
 }
 
@@ -94,7 +99,17 @@ function toPlayer(
     cartelaId,
     cartelaIndex,
     disqualified,
+    balance: user.balance,
   };
+}
+
+export function roomStake(room: RoomRow) {
+  const stake = Number(room.stake ?? DEFAULT_STAKE_BIRR);
+  return Number.isFinite(stake) && stake > 0 ? stake : DEFAULT_STAKE_BIRR;
+}
+
+export function potFromCards(cards: PlayerCardRow[]) {
+  return cards.reduce((sum, card) => sum + Number(card.stakePaid ?? 0), 0);
 }
 
 export function toIso(value: Date | string | null | undefined): string | null {
@@ -170,6 +185,8 @@ export async function getLobbyState(
 ): Promise<LobbyState> {
   const cards = await loadPlayerCards(round.id);
   const players: PlayerSummary[] = [];
+  const stake = roomStake(room);
+  const balance = await getUserBalance(me.id);
 
   for (const card of cards) {
     const user = await loadUser(card.userId);
@@ -185,21 +202,33 @@ export async function getLobbyState(
     );
   }
 
+  const meBase = { ...me, balance };
   const mine = players.find((player) => player.id === me.id);
   if (!mine) {
-    players.unshift(toPlayer(me, null, null));
+    players.unshift(toPlayer(meBase, null, null));
   }
 
+  const meSummary = {
+    ...(mine ?? toPlayer(meBase, null, null)),
+    balance,
+  };
+
   return {
-    room: { id: room.id, code: room.code, status: room.status },
+    room: {
+      id: room.id,
+      code: room.code,
+      status: room.status,
+      stake,
+    },
     round: {
       id: round.id,
       status: round.status,
       pattern: round.pattern as WinPattern,
       phaseEndsAt: phaseEndsAtFor(round),
+      pot: potFromCards(cards),
     },
     players,
-    me: mine ?? toPlayer(me, null, null),
+    me: meSummary,
   };
 }
 
@@ -282,6 +311,12 @@ export async function claimCartela(
     throw new RoomError("Cartelas can only be changed before the round starts", 409);
   }
 
+  const room = (await db.orm.Room.where({ id: round.roomId }).first()) as
+    | RoomRow
+    | null;
+  if (!room) throw new RoomError("Room not found", 404);
+  const stake = roomStake(room);
+
   const cartela = await getCartela(cartelaId);
   if (!cartela) throw new RoomError("Cartela not found", 404);
 
@@ -294,8 +329,19 @@ export async function claimCartela(
   }
 
   if (mine && mine.cartelaId === cartelaId) {
-    // Toggle off — release this cartela.
-    await db.orm.PlayerCard.where({ id: mine.id }).delete();
+    const refund = Number(mine.stakePaid ?? stake);
+    await db.transaction(async (tx) => {
+      await tx.orm.PlayerCard.where({ id: mine.id }).delete();
+      if (refund > 0) {
+        const user = (await tx.orm.User.where({ id: me.id }).first()) as {
+          balance?: number | null;
+        } | null;
+        const balance = Number(user?.balance ?? 0) + refund;
+        await tx.orm.User.where({ id: me.id }).update({
+          balance,
+        } as { balance: number });
+      }
+    });
     const remaining = await loadPlayerCards(roundId);
     if (remaining.length === 0 && round.hopInEndsAt) {
       await db.orm.Round.where({ id: roundId }).update({
@@ -306,11 +352,37 @@ export async function claimCartela(
   }
 
   const marks = serializeMarks(emptyMarks());
+  const switching = Boolean(mine);
+  const carriedStake = switching ? Number(mine!.stakePaid ?? stake) : stake;
+
+  if (!switching) {
+    const balance = await getUserBalance(me.id);
+    if (balance < stake) {
+      throw new RoomError(
+        `Need ${stake} Br to join (balance ${balance} Br)`,
+        400,
+      );
+    }
+  }
 
   try {
     await db.transaction(async (tx) => {
       if (mine) {
         await tx.orm.PlayerCard.where({ id: mine.id }).delete();
+      } else {
+        const user = (await tx.orm.User.where({ id: me.id }).first()) as {
+          balance?: number | null;
+        } | null;
+        const balance = Number(user?.balance ?? 0);
+        if (balance < stake) {
+          throw new RoomError(
+            `Need ${stake} Br to join (balance ${balance} Br)`,
+            400,
+          );
+        }
+        await tx.orm.User.where({ id: me.id }).update({
+          balance: balance - stake,
+        } as { balance: number });
       }
 
       await tx.orm.PlayerCard.create({
@@ -320,6 +392,7 @@ export async function claimCartela(
         cartelaId,
         marks,
         disqualified: 0,
+        stakePaid: carriedStake,
       } as {
         id: string;
         roundId: string;
@@ -327,6 +400,7 @@ export async function claimCartela(
         cartelaId: string;
         marks: string;
         disqualified: number;
+        stakePaid: number;
       });
 
       if (!round.hopInEndsAt) {
@@ -335,7 +409,8 @@ export async function claimCartela(
         } as { hopInEndsAt: Date });
       }
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof RoomError) throw error;
     throw new RoomError("That cartela is already taken", 409);
   }
 

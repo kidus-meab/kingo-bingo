@@ -29,12 +29,15 @@ import {
   loadRound,
   loadUser,
   phaseEndsAtFor,
+  potFromCards,
+  roomStake,
   RoomError,
   type CalledNumberRow,
   type PlayerCardRow,
   type RoundRow,
 } from "@/lib/rooms";
 import { getCartela } from "@/lib/cartelas";
+import { getUserBalance } from "@/lib/users";
 
 function toBall(row: CalledNumberRow): CalledBall {
   return {
@@ -66,6 +69,7 @@ async function loadRoomById(id: string) {
     id: string;
     code: string;
     status: string;
+    stake?: number | null;
   } | null>;
 }
 
@@ -75,6 +79,7 @@ type WinRow = {
   playerCardId: string;
   pattern: string;
   claimedAt: Date | string;
+  payout?: number | null;
 };
 
 function claimedAtIso(value: Date | string) {
@@ -103,6 +108,7 @@ async function loadWins(roundId: string): Promise<RoundWin[]> {
       claimedAt: claimedAtIso(row.claimedAt),
       cartelaIndex: cartela?.index ?? null,
       cells: cartela?.cells ?? null,
+      payout: Number(row.payout ?? 0),
     });
   }
   return wins.sort(
@@ -207,6 +213,20 @@ export async function advanceRound(roundId: string): Promise<RoundRow | null> {
         error instanceof RoomError &&
         /every number has already been called/i.test(error.message)
       ) {
+        const cards = await loadPlayerCards(roundId);
+        for (const card of cards) {
+          const refund = Number(card.stakePaid ?? 0);
+          if (refund <= 0) continue;
+          const user = (await db.orm.User.where({ id: card.userId }).first()) as {
+            balance?: number | null;
+          } | null;
+          await db.orm.User.where({ id: card.userId }).update({
+            balance: Number(user?.balance ?? 0) + refund,
+          } as { balance: number });
+          await db.orm.PlayerCard.where({ id: card.id }).update({
+            stakePaid: 0,
+          } as { stakePaid: number });
+        }
         await setRoundStatus(roundId, {
           status: "finished",
           endedAt: new Date(),
@@ -267,12 +287,16 @@ export async function getRoundState(
   const room = await loadRoomById(round.roomId);
   if (!room) throw new RoomError("Room not found", 404);
 
-  const [cards, called, myCard, wins] = await Promise.all([
+  const [cards, called, myCard, wins, balance] = await Promise.all([
     loadPlayerCards(round.id),
     loadCalledNumbers(round.id),
     getMyCard(round.id, me.id),
     loadWins(round.id),
+    getUserBalance(me.id),
   ]);
+
+  const stake = roomStake(room);
+  const pot = potFromCards(cards);
 
   const players = [];
   for (const card of cards) {
@@ -287,6 +311,7 @@ export async function getRoundState(
       cartelaId: card.cartelaId,
       cartelaIndex: cartela?.index ?? null,
       disqualified: Boolean(card.disqualified),
+      balance: user.balance,
     });
   }
 
@@ -298,6 +323,7 @@ export async function getRoundState(
     cartelaId: myCard?.cartelaId ?? null,
     cartelaIndex: myCard?.index ?? null,
     disqualified: myCard?.disqualified ?? false,
+    balance,
   };
 
   if (!players.some((player) => player.id === me.id)) {
@@ -311,17 +337,23 @@ export async function getRoundState(
       : null;
 
   return {
-    room: { id: room.id, code: room.code, status: room.status },
+    room: {
+      id: room.id,
+      code: room.code,
+      status: room.status,
+      stake,
+    },
     round: {
       id: round.id,
       status: round.status,
       pattern: round.pattern as WinPattern,
       phaseEndsAt: phaseEndsAtFor(round),
+      pot,
     },
     calledNumbers: balls,
     lastCalled: balls.at(-1) ?? null,
     players,
-    me: players.find((player) => player.id === me.id) ?? mePlayer,
+    me: { ...(players.find((player) => player.id === me.id) ?? mePlayer), balance },
     myCard,
     wins: round.status === "finished" || wins.length > 0 ? wins : [],
     checkingUntil,
@@ -507,13 +539,36 @@ export async function claimBingo(roundId: string, me: AppUser) {
         const existing = (await tx.orm.Win.where({ roundId }).all()) as WinRow[];
         if (existing.some((win) => win.userId === me.id)) return;
 
+        const entries = (await tx.orm.PlayerCard.where({
+          roundId,
+        }).all()) as PlayerCardRow[];
+        const pot = potFromCards(entries);
+
         await tx.orm.Win.create({
           id: newId(),
           roundId,
           userId: me.id,
           playerCardId: card.id,
           pattern: matched.join(","),
+          payout: pot,
+        } as {
+          id: string;
+          roundId: string;
+          userId: string;
+          playerCardId: string;
+          pattern: string;
+          payout: number;
         });
+
+        if (pot > 0) {
+          const winner = (await tx.orm.User.where({ id: me.id }).first()) as {
+            balance?: number | null;
+          } | null;
+          await tx.orm.User.where({ id: me.id }).update({
+            balance: Number(winner?.balance ?? 0) + pot,
+          } as { balance: number });
+        }
+
         await tx.orm.Round.where({ id: roundId }).update({
           status: "finished",
           endedAt: new Date(),

@@ -209,6 +209,13 @@
                   "kind": "scalar"
                 }
               },
+              "stakePaid": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sqlite/integer@1",
+                  "kind": "scalar"
+                }
+              },
               "userId": {
                 "nullable": false,
                 "type": {
@@ -299,6 +306,9 @@
                 "roundId": {
                   "column": "roundId"
                 },
+                "stakePaid": {
+                  "column": "stakePaid"
+                },
                 "userId": {
                   "column": "userId"
                 }
@@ -334,6 +344,13 @@
                 "nullable": false,
                 "type": {
                   "codecId": "sqlite/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "stake": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sqlite/integer@1",
                   "kind": "scalar"
                 }
               },
@@ -391,6 +408,9 @@
                 },
                 "id": {
                   "column": "id"
+                },
+                "stake": {
+                  "column": "stake"
                 },
                 "status": {
                   "column": "status"
@@ -555,6 +575,13 @@
           },
           "User": {
             "fields": {
+              "balance": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sqlite/integer@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -647,6 +674,9 @@
             },
             "storage": {
               "fields": {
+                "balance": {
+                  "column": "balance"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -690,6 +720,13 @@
                 "nullable": false,
                 "type": {
                   "codecId": "sqlite/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "payout": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sqlite/integer@1",
                   "kind": "scalar"
                 }
               },
@@ -775,6 +812,9 @@
                 },
                 "pattern": {
                   "column": "pattern"
+                },
+                "payout": {
+                  "column": "payout"
                 },
                 "playerCardId": {
                   "column": "playerCardId"
@@ -941,6 +981,15 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "stakePaid": {
+                  "codecId": "sqlite/integer@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "integer",
+                  "nullable": false
+                },
                 "userId": {
                   "codecId": "sqlite/text@1",
                   "nativeType": "text",
@@ -1067,6 +1116,15 @@
                 "id": {
                   "codecId": "sqlite/text@1",
                   "nativeType": "text",
+                  "nullable": false
+                },
+                "stake": {
+                  "codecId": "sqlite/integer@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 10
+                  },
+                  "nativeType": "integer",
                   "nullable": false
                 },
                 "status": {
@@ -1196,6 +1254,15 @@
             },
             "user": {
               "columns": {
+                "balance": {
+                  "codecId": "sqlite/integer@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 1000
+                  },
+                  "nativeType": "integer",
+                  "nullable": false
+                },
                 "createdAt": {
                   "codecId": "sqlite/datetime@1",
                   "default": {
@@ -1265,6 +1332,15 @@
                 "pattern": {
                   "codecId": "sqlite/text@1",
                   "nativeType": "text",
+                  "nullable": false
+                },
+                "payout": {
+                  "codecId": "sqlite/integer@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "integer",
                   "nullable": false
                 },
                 "playerCardId": {
@@ -1371,7 +1447,7 @@
         "id": "__unbound__"
       }
     },
-    "storageHash": "06bee6f29baa8eefffef2b1db6962af2c8f72a1a46912bd03d77216959fdd1a9"
+    "storageHash": "4abc4edd8fd5bdab114fb69ce6089abf4d07424f91879f793b993370b7931328"
   },
   "capabilities": {
     "sql": {

@@ -160,6 +160,10 @@ export const AUTO_DRAW_MS = 6000;
 export const HOP_IN_MS = 30_000;
 export const STARTING_MS = 5_000;
 export const WINNER_MS = 5_000;
+/** Default entry stake in Birr for a room. */
+export const DEFAULT_STAKE_BIRR = 10;
+/** Starting wallet for new players (dev / first join). */
+export const DEFAULT_BALANCE_BIRR = 1000;
 /** @deprecated Co-winner window removed; kept for any stray imports. */
 export const CO_WIN_MS = 0;
 

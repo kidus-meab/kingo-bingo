@@ -22,6 +22,7 @@ export type AppUser = {
   firstName: string;
   username: string | null;
   photoUrl: string | null;
+  balance: number;
 };
 
 function readInitData(request: Request, body?: { initData?: string }) {
@@ -41,7 +42,8 @@ export async function requireUser(
   if (initData) {
     try {
       const telegramUser = validateTelegramInitData(initData);
-      return (await getOrCreateUserFromTelegram(telegramUser)) as AppUser;
+      const row = await getOrCreateUserFromTelegram(telegramUser);
+      return toAppUser(row);
     } catch (error) {
       if (error instanceof InitDataError) {
         throw new AuthError("Invalid or expired initData", 401);
@@ -55,7 +57,26 @@ export async function requireUser(
   }
 
   const devId = request.headers.get("x-dev-user") ?? "0";
-  return (await getOrCreateUserFromTelegram(getDevUser(devId))) as AppUser;
+  const row = await getOrCreateUserFromTelegram(getDevUser(devId));
+  return toAppUser(row);
+}
+
+function toAppUser(row: {
+  id: string;
+  telegramId: string;
+  firstName: string;
+  username: string | null;
+  photoUrl: string | null;
+  balance?: number | null;
+}): AppUser {
+  return {
+    id: row.id,
+    telegramId: String(row.telegramId ?? ""),
+    firstName: row.firstName,
+    username: row.username ?? null,
+    photoUrl: row.photoUrl ?? null,
+    balance: Number(row.balance ?? 0),
+  };
 }
 
 export function telegramFromAppUser(user: AppUser): TelegramUser {
