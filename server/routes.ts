@@ -5,9 +5,11 @@ import { requireUser } from "@/lib/auth";
 import { DEFAULT_ROOM_CODE } from "@/lib/bingo";
 import { getCartelas } from "@/lib/cartelas";
 import {
+  advanceRound,
   claimBingo,
   drawRound,
   getRoundState,
+  markCell,
   startNewRound,
   startRound,
 } from "@/lib/round-play";
@@ -19,6 +21,7 @@ import {
   getMyCard,
   getRoundCartelas,
   joinRoom,
+  loadRound,
   RoomError,
 } from "@/lib/rooms";
 import {
@@ -93,7 +96,19 @@ api.post("/rooms/join", async (c) => {
       typeof body.code === "string" && body.code.trim()
         ? body.code
         : DEFAULT_ROOM_CODE;
-    return c.json(await joinRoom(code, user));
+    const lobby = await joinRoom(code, user);
+    await advanceRound(lobby.round.id);
+    const round = (await loadRound(lobby.round.id)) ?? null;
+    const room = await findRoom(lobby.room.id);
+    if (round && room) {
+      // May have auto-advanced to a newer round after finished → pending.
+      const live = await findCurrentRound(room.id);
+      if (live) {
+        return c.json(await getLobbyState(room, live, user));
+      }
+      return c.json(await getLobbyState(room, round, user));
+    }
+    return c.json(lobby);
   } catch (error) {
     return apiError(error);
   }
@@ -105,8 +120,10 @@ api.get("/rooms/:id", async (c) => {
     const id = c.req.param("id");
     const room = await findRoom(id);
     if (!room) throw new RoomError("Room not found", 404);
-    const round = await findCurrentRound(room.id);
+    let round = await findCurrentRound(room.id);
     if (!round) throw new RoomError("Round not found", 404);
+    await advanceRound(round.id);
+    round = (await findCurrentRound(room.id)) ?? round;
     return c.json(await getLobbyState(room, round, user));
   } catch (error) {
     return apiError(error);
@@ -158,6 +175,7 @@ api.post("/rounds/:id/cartelas/:cartelaId/claim", async (c) => {
       c.req.param("cartelaId"),
       user,
     );
+    await advanceRound(c.req.param("id"));
     return c.json(card);
   } catch (error) {
     return apiError(error);
@@ -185,6 +203,23 @@ api.post("/rounds/:id/draw", async (c) => {
     return c.json(
       await drawRound(c.req.param("id"), user, body.force === true),
     );
+  } catch (error) {
+    return apiError(error);
+  }
+});
+
+api.post("/rounds/:id/mark", async (c) => {
+  try {
+    const body = await readJson(c.req.raw);
+    const user = await requireUser(c.req.raw, {
+      initData: typeof body.initData === "string" ? body.initData : "",
+    });
+    const cellIndex =
+      typeof body.cellIndex === "number"
+        ? body.cellIndex
+        : Number(body.cellIndex);
+    const card = await markCell(c.req.param("id"), user, cellIndex);
+    return c.json(card);
   } catch (error) {
     return apiError(error);
   }

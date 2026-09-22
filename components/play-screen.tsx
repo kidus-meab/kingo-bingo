@@ -4,10 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { BingoCard } from "@/components/bingo-card";
+import { CalledBoard } from "@/components/called-board";
 import { LastCalled, RecentCalls } from "@/components/called-ball";
 import { UserChip } from "@/components/user-chip";
 import { WinnerOverlay } from "@/components/winner-overlay";
-import { AUTO_DRAW_MS, DEFAULT_ROOM_CODE } from "@/lib/bingo";
+import { DEFAULT_ROOM_CODE } from "@/lib/bingo";
 import {
   apiFetch,
   getStoredDevUserId,
@@ -21,7 +22,7 @@ import {
   setTelegramBackButton,
 } from "@/lib/telegram";
 
-const LOBBY_POLL_MS = 3000;
+const LOBBY_POLL_MS = 2000;
 const LIVE_POLL_MS = 1000;
 
 type View = "picker" | "card";
@@ -33,6 +34,28 @@ function asLobby(state: RoundState): LobbyState {
     players: state.players,
     me: state.me,
   };
+}
+
+function useCountdown(endsAt: string | null) {
+  const [remaining, setRemaining] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!endsAt) {
+      setRemaining(null);
+      return;
+    }
+
+    const tick = () => {
+      const ms = Date.parse(endsAt) - Date.now();
+      setRemaining(Number.isFinite(ms) ? Math.max(0, Math.ceil(ms / 1000)) : null);
+    };
+
+    tick();
+    const timer = window.setInterval(tick, 250);
+    return () => window.clearInterval(timer);
+  }, [endsAt]);
+
+  return remaining;
 }
 
 export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
@@ -48,10 +71,29 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
   const [changing, setChanging] = useState(false);
   const [bingoBusy, setBingoBusy] = useState(false);
   const [nextBusy, setNextBusy] = useState(false);
+  const [markBusy, setMarkBusy] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const lastBallRef = useRef<string | null>(null);
+  const lastRoundIdRef = useRef<string | null>(null);
 
   const applyLive = useCallback((next: RoundState) => {
+    if (
+      lastRoundIdRef.current &&
+      lastRoundIdRef.current !== next.round.id &&
+      next.round.status === "pending"
+    ) {
+      lastBallRef.current = null;
+      setCartelas([]);
+      setChanging(false);
+      setView("picker");
+      setCard(next.myCard);
+      setLive(null);
+      setLobby(asLobby(next));
+      lastRoundIdRef.current = next.round.id;
+      return;
+    }
+
+    lastRoundIdRef.current = next.round.id;
     setLive(next);
     setLobby(asLobby(next));
     setCard(next.myCard);
@@ -66,7 +108,11 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
     const knownRoundId = live?.round.id ?? lobby?.round.id;
     const knownStatus = live?.round.status ?? lobby?.round.status;
 
-    if (knownRoundId && knownStatus && knownStatus !== "pending") {
+    if (
+      knownRoundId &&
+      knownStatus &&
+      knownStatus !== "pending"
+    ) {
       const nextLive = await apiFetch<RoundState>(
         `/api/rounds/${knownRoundId}/state`,
       );
@@ -91,11 +137,11 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
       `/api/me/card?roundId=${nextLobby.round.id}`,
     );
 
+    lastRoundIdRef.current = nextLobby.round.id;
     setLobby(nextLobby);
     setCard(cardPayload.card);
     setLive(null);
 
-    // Always keep the number grid fresh while the round is still pending.
     const cartelaPayload = await apiFetch<{ cartelas: RoundCartela[] }>(
       `/api/rounds/${nextLobby.round.id}/cartelas`,
     );
@@ -152,7 +198,9 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
             if (!cancelled) schedule();
           });
       },
-        statusRef.current === "drawing" || statusRef.current === "checking"
+        statusRef.current === "drawing" ||
+          statusRef.current === "starting" ||
+          statusRef.current === "finished"
           ? LIVE_POLL_MS
           : LOBBY_POLL_MS,
       );
@@ -168,7 +216,12 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
   useEffect(() => {
     const status = live?.round.status ?? lobby?.round.status;
     if (changing) return;
-    if (card || status === "drawing" || status === "checking" || status === "finished") {
+    if (
+      card ||
+      status === "drawing" ||
+      status === "starting" ||
+      status === "finished"
+    ) {
       setView("card");
     }
   }, [card, changing, live?.round.status, lobby?.round.status]);
@@ -195,24 +248,6 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
     return () => setTelegramBackButton(null);
   }, [live?.round.status, lobby, router, view]);
 
-  useEffect(() => {
-    const roundId = lobby?.round.id;
-    if (!roundId || (live?.round.status ?? lobby.round.status) !== "drawing") {
-      return;
-    }
-
-    const timer = window.setInterval(() => {
-      void apiFetch<RoundState>(`/api/rounds/${roundId}/draw`, {
-        method: "POST",
-        body: JSON.stringify({}),
-      })
-        .then(applyLive)
-        .catch(() => undefined);
-    }, AUTO_DRAW_MS);
-
-    return () => window.clearInterval(timer);
-  }, [applyLive, live?.round.status, lobby]);
-
   async function claim(cartelaId: string) {
     if (!lobby) return;
     setBusyId(cartelaId);
@@ -235,33 +270,27 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
     }
   }
 
-  async function startRound() {
-    if (!lobby) return;
+  async function markCell(index: number) {
+    if (!lobby || markBusy) return;
+    setMarkBusy(true);
     setError(null);
     try {
-      applyLive(
-        await apiFetch<RoundState>(`/api/rounds/${lobby.round.id}/start`, {
+      const nextCard = await apiFetch<MyCard>(
+        `/api/rounds/${lobby.round.id}/mark`,
+        {
           method: "POST",
-          body: JSON.stringify({}),
-        }),
+          body: JSON.stringify({ cellIndex: index }),
+        },
       );
+      setCard(nextCard);
+      if (live) {
+        setLive({ ...live, myCard: nextCard });
+      }
+      hapticImpact("light");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start the round");
-    }
-  }
-
-  async function callNext() {
-    if (!lobby) return;
-    setError(null);
-    try {
-      applyLive(
-        await apiFetch<RoundState>(`/api/rounds/${lobby.round.id}/draw`, {
-          method: "POST",
-          body: JSON.stringify({ force: true }),
-        }),
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not call a number");
+      setError(err instanceof Error ? err.message : "Could not mark cell");
+    } finally {
+      setMarkBusy(false);
     }
   }
 
@@ -280,6 +309,7 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
     } catch (err) {
       hapticNotify("error");
       setError(err instanceof Error ? err.message : "Not a valid bingo");
+      await refresh().catch(() => undefined);
     } finally {
       setBingoBusy(false);
     }
@@ -295,6 +325,7 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
         { method: "POST", body: JSON.stringify({}) },
       );
       lastBallRef.current = null;
+      lastRoundIdRef.current = nextLobby.round.id;
       setLive(null);
       setCard(null);
       setCartelas([]);
@@ -318,6 +349,10 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
     window.location.reload();
   }
 
+  const phaseEndsAt =
+    live?.round.phaseEndsAt ?? lobby?.round.phaseEndsAt ?? null;
+  const countdown = useCountdown(phaseEndsAt);
+
   if (!lobby) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-background px-5">
@@ -331,12 +366,14 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
   const mine = lobby.me;
   const status = live?.round.status ?? lobby.round.status;
   const waiting = status === "pending";
+  const starting = status === "starting";
   const drawing = status === "drawing";
-  const checking = status === "checking";
   const finished = status === "finished";
   const shownCard = live?.myCard ?? card;
-  const claimedCount = lobby.players.filter((player) => player.cartelaIndex).length;
-  const showWinners = (checking || finished) && (live?.wins.length ?? 0) > 0;
+  const disqualified =
+    shownCard?.disqualified || mine.disqualified || live?.me.disqualified;
+  const showWinners = finished && (live?.wins.length ?? 0) > 0;
+  const livePlay = drawing || starting || finished;
 
   return (
     <main className="relative flex h-dvh flex-col overflow-hidden bg-background">
@@ -364,9 +401,18 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
                 Room {lobby.room.code}
               </p>
               <p className="text-[11px] font-semibold text-theme uppercase">
-                {waiting ? "Waiting" : status}
+                {waiting
+                  ? countdown != null
+                    ? `Hop-in ${countdown}s`
+                    : "Waiting"
+                  : status}
               </p>
             </div>
+            {waiting && countdown != null ? (
+              <p className="mt-2 text-center text-3xl font-extrabold text-theme tabular-nums">
+                {countdown}
+              </p>
+            ) : null}
             <p className="mt-2 text-sm text-foreground">
               {lobby.players.filter((player) => player.cartelaIndex).length} of{" "}
               {lobby.players.length} picked a cartela
@@ -387,20 +433,95 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
         </section>
       ) : (
         <p className="px-4 pb-2 text-center text-xs text-muted">
-          Room {lobby.room.code} · Cartela #{shownCard?.index} · {status}
+          Room {lobby.room.code}
+          {shownCard ? ` · Cartela #${shownCard.index}` : ""}
+          {waiting && countdown != null
+            ? ` · ${countdown}s`
+            : starting && countdown != null
+              ? ` · Start in ${countdown}s`
+              : ` · ${status}`}
         </p>
       )}
 
-      {view === "card" ? (
-        <section className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-5">
-          {drawing || checking || finished ? (
-            <div className="mb-4 flex flex-col items-center gap-3">
-              <LastCalled ball={live?.lastCalled ?? null} />
-              <RecentCalls balls={live?.calledNumbers ?? []} />
+      {view === "card" && livePlay ? (
+        <section className="flex min-h-0 flex-1 flex-col px-3 pb-4">
+          {starting ? (
+            <div className="mb-3 flex flex-col items-center justify-center rounded-2xl bg-surface px-4 py-8">
+              <p className="text-[11px] font-semibold tracking-[0.2em] text-muted uppercase">
+                Get ready
+              </p>
+              <p className="mt-2 text-6xl font-extrabold text-theme tabular-nums">
+                {countdown ?? "…"}
+              </p>
             </div>
           ) : null}
 
-          {error && view === "card" ? (
+          {error ? (
+            <p className="mb-2 text-center text-xs text-theme">{error}</p>
+          ) : null}
+
+          {disqualified && drawing ? (
+            <p className="mb-2 text-center text-xs font-semibold text-theme">
+              Withdrawn — watching the draw
+            </p>
+          ) : null}
+
+          <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] gap-2">
+            <CalledBoard balls={live?.calledNumbers ?? []} />
+
+            <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
+              <div className="flex flex-col items-center gap-2">
+                <LastCalled ball={live?.lastCalled ?? null} />
+                <RecentCalls balls={live?.calledNumbers ?? []} />
+              </div>
+
+              {shownCard ? (
+                <BingoCard
+                  cells={shownCard.cells}
+                  marked={shownCard.marked}
+                  interactive={drawing && !disqualified}
+                  disabled={!drawing || Boolean(disqualified) || markBusy}
+                  onCellClick={(index) => void markCell(index)}
+                />
+              ) : (
+                <p className="text-center text-sm text-muted">
+                  You did not pick a cartela this round.
+                </p>
+              )}
+
+              {drawing ? (
+                <button
+                  type="button"
+                  disabled={
+                    bingoBusy || !shownCard || Boolean(disqualified)
+                  }
+                  onClick={() => void shoutBingo()}
+                  className="h-14 shrink-0 rounded-2xl bg-theme text-lg font-extrabold tracking-[0.18em] text-on-theme disabled:opacity-45"
+                >
+                  {bingoBusy
+                    ? "Checking…"
+                    : disqualified
+                      ? "Withdrawn"
+                      : "BINGO"}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      ) : view === "card" ? (
+        <section className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-5">
+          {waiting && countdown != null ? (
+            <div className="mb-4 flex flex-col items-center rounded-2xl bg-surface px-4 py-6">
+              <p className="text-[11px] font-semibold tracking-[0.2em] text-muted uppercase">
+                Hop-in closes
+              </p>
+              <p className="mt-2 text-5xl font-extrabold text-theme tabular-nums">
+                {countdown}
+              </p>
+            </div>
+          ) : null}
+
+          {error ? (
             <p className="mb-2 text-center text-xs text-theme">{error}</p>
           ) : null}
 
@@ -418,14 +539,6 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
             <div className="mt-4 grid gap-2">
               <button
                 type="button"
-                disabled={claimedCount === 0}
-                onClick={() => void startRound()}
-                className="h-12 rounded-2xl bg-theme font-bold text-on-theme disabled:opacity-45"
-              >
-                Start round
-              </button>
-              <button
-                type="button"
                 onClick={() => {
                   setChanging(true);
                   setView("picker");
@@ -436,32 +549,6 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
               >
                 Change cartela
               </button>
-            </div>
-          ) : null}
-
-          {drawing || checking ? (
-            <div className="mt-4 grid gap-2">
-              <button
-                type="button"
-                disabled={bingoBusy || !shownCard}
-                onClick={() => void shoutBingo()}
-                className="h-14 rounded-2xl bg-theme text-lg font-extrabold tracking-[0.18em] text-on-theme disabled:opacity-45"
-              >
-                {bingoBusy ? "Checking…" : "BINGO"}
-              </button>
-              {drawing ? (
-                <button
-                  type="button"
-                  onClick={() => void callNext()}
-                  className="h-11 rounded-2xl bg-surface text-sm font-semibold text-foreground"
-                >
-                  Call next
-                </button>
-              ) : (
-                <p className="text-center text-xs text-muted">
-                  Holding the last number for co-winners…
-                </p>
-              )}
             </div>
           ) : null}
         </section>
@@ -575,9 +662,9 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
         <WinnerOverlay
           wins={live?.wins ?? []}
           lastCalled={live?.lastCalled ?? null}
-          checking={checking}
+          nextInSec={countdown}
           busy={nextBusy}
-          onNextRound={() => void nextRound()}
+          onSkip={() => void nextRound()}
         />
       ) : null}
 

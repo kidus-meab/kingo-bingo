@@ -7,11 +7,17 @@ export type PlayerSummary = {
   photoUrl: string | null;
   cartelaId: string | null;
   cartelaIndex: number | null;
+  disqualified?: boolean;
 };
 
 export type LobbyState = {
   room: { id: string; code: string; status: string };
-  round: { id: string; status: string; pattern: WinPattern };
+  round: {
+    id: string;
+    status: string;
+    pattern: WinPattern;
+    phaseEndsAt: string | null;
+  };
   players: PlayerSummary[];
   me: PlayerSummary;
 };
@@ -30,6 +36,7 @@ export type MyCard = {
   index: number;
   cells: BingoCells;
   marked: boolean[];
+  disqualified: boolean;
 };
 
 export type CalledBall = {
@@ -47,11 +54,18 @@ export type RoundWin = {
   pattern: string;
   patterns: WinPattern[];
   claimedAt: string;
+  cartelaIndex?: number | null;
+  cells?: BingoCells | null;
 };
 
 export type RoundState = {
   room: { id: string; code: string; status: string };
-  round: { id: string; status: string; pattern: WinPattern };
+  round: {
+    id: string;
+    status: string;
+    pattern: WinPattern;
+    phaseEndsAt: string | null;
+  };
   calledNumbers: CalledBall[];
   lastCalled: CalledBall | null;
   players: PlayerSummary[];

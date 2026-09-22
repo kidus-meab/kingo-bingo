@@ -1,7 +1,11 @@
 import {
   DEFAULT_ROOM_CODE,
   DEFAULT_ROUND_PATTERN,
-  marksForCells,
+  emptyMarks,
+  HOP_IN_MS,
+  parseMarks,
+  serializeMarks,
+  WINNER_MS,
   type WinPattern,
 } from "@/lib/bingo";
 import { getCartela, getCartelas } from "@/lib/cartelas";
@@ -38,6 +42,8 @@ export type RoundRow = {
   roomId: string;
   status: string;
   pattern: string;
+  hopInEndsAt?: Date | string | null;
+  startingEndsAt?: Date | string | null;
   startedAt?: Date | string | null;
   endedAt?: Date | string | null;
 };
@@ -47,6 +53,8 @@ export type PlayerCardRow = {
   roundId: string;
   userId: string;
   cartelaId: string;
+  marks?: string | null;
+  disqualified?: number | null;
 };
 
 export type CalledNumberRow = {
@@ -72,7 +80,12 @@ function asUser(row: unknown): AppUser | null {
   };
 }
 
-function toPlayer(user: AppUser, cartelaId: string | null, cartelaIndex: number | null) {
+function toPlayer(
+  user: AppUser,
+  cartelaId: string | null,
+  cartelaIndex: number | null,
+  disqualified = false,
+): PlayerSummary {
   return {
     id: user.id,
     firstName: user.firstName,
@@ -80,7 +93,26 @@ function toPlayer(user: AppUser, cartelaId: string | null, cartelaIndex: number 
     photoUrl: user.photoUrl,
     cartelaId,
     cartelaIndex,
+    disqualified,
   };
+}
+
+export function toIso(value: Date | string | null | undefined): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) return value.toISOString();
+  const parsed = Date.parse(String(value));
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : String(value);
+}
+
+export function phaseEndsAtFor(round: RoundRow): string | null {
+  if (round.status === "pending") return toIso(round.hopInEndsAt);
+  if (round.status === "starting") return toIso(round.startingEndsAt);
+  if (round.status === "finished") {
+    const ended = toIso(round.endedAt);
+    if (!ended) return null;
+    return new Date(Date.parse(ended) + WINNER_MS).toISOString();
+  }
+  return null;
 }
 
 export async function findRoom(idOrCode: string) {
@@ -143,7 +175,14 @@ export async function getLobbyState(
     const user = await loadUser(card.userId);
     if (!user) continue;
     const cartela = await getCartela(card.cartelaId);
-    players.push(toPlayer(user, card.cartelaId, cartela?.index ?? null));
+    players.push(
+      toPlayer(
+        user,
+        card.cartelaId,
+        cartela?.index ?? null,
+        Boolean(card.disqualified),
+      ),
+    );
   }
 
   const mine = players.find((player) => player.id === me.id);
@@ -157,6 +196,7 @@ export async function getLobbyState(
       id: round.id,
       status: round.status,
       pattern: round.pattern as WinPattern,
+      phaseEndsAt: phaseEndsAtFor(round),
     },
     players,
     me: mine ?? toPlayer(me, null, null),
@@ -192,7 +232,15 @@ export async function getRoundCartelas(roundId: string) {
     const user = await loadUser(card.userId);
     if (!user) continue;
     const cartela = cartelas.find((item) => item.id === card.cartelaId);
-    taken.set(card.cartelaId, toPlayer(user, card.cartelaId, cartela?.index ?? null));
+    taken.set(
+      card.cartelaId,
+      toPlayer(
+        user,
+        card.cartelaId,
+        cartela?.index ?? null,
+        Boolean(card.disqualified),
+      ),
+    );
   }
 
   return cartelas.map<RoundCartela>((cartela) => ({
@@ -210,18 +258,14 @@ export async function getMyCard(roundId: string, userId: string): Promise<MyCard
   const cartela = await getCartela(card.cartelaId);
   if (!cartela) return null;
 
-  const called = await loadCalledNumbers(roundId);
-
   return {
     id: card.id,
     roundId: card.roundId,
     cartelaId: card.cartelaId,
     index: cartela.index,
     cells: cartela.cells,
-    marked: marksForCells(
-      cartela.cells,
-      called.map((row) => row.value),
-    ),
+    marked: parseMarks(card.marks),
+    disqualified: Boolean(card.disqualified),
   };
 }
 
@@ -253,8 +297,10 @@ export async function claimCartela(
     return getMyCard(roundId, me.id);
   }
 
+  const marks = serializeMarks(emptyMarks());
+
   try {
-    await db.transaction(async (tx: typeof db) => {
+    await db.transaction(async (tx) => {
       if (mine) {
         await tx.orm.PlayerCard.where({ id: mine.id }).delete();
       }
@@ -264,7 +310,22 @@ export async function claimCartela(
         roundId,
         userId: me.id,
         cartelaId,
+        marks,
+        disqualified: 0,
+      } as {
+        id: string;
+        roundId: string;
+        userId: string;
+        cartelaId: string;
+        marks: string;
+        disqualified: number;
       });
+
+      if (!round.hopInEndsAt) {
+        await tx.orm.Round.where({ id: roundId }).update({
+          hopInEndsAt: new Date(Date.now() + HOP_IN_MS),
+        } as { hopInEndsAt: Date });
+      }
     });
   } catch {
     throw new RoomError("That cartela is already taken", 409);
@@ -274,4 +335,3 @@ export async function claimCartela(
   if (!claimed) throw new RoomError("Could not claim cartela", 500);
   return claimed;
 }
-

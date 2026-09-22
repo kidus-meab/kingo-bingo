@@ -17,7 +17,11 @@ export const CARTELA_COUNT = 100;
 export const CARTELA_SEED = 20260922;
 
 export type RoomStatus = "waiting" | "playing" | "finished";
-export type RoundStatus = "pending" | "drawing" | "checking" | "finished";
+export type RoundStatus =
+  | "pending"
+  | "starting"
+  | "drawing"
+  | "finished";
 export type WinPattern =
   "row" | "column" | "diagonal" | "corners" | "blackout" | "any_line";
 
@@ -153,7 +157,11 @@ export function serializeCartelaCells(cells: BingoCells) {
 export const BALL_MIN = 1;
 export const BALL_MAX = 75;
 export const AUTO_DRAW_MS = 6000;
-export const CO_WIN_MS = 4000;
+export const HOP_IN_MS = 30_000;
+export const STARTING_MS = 5_000;
+export const WINNER_MS = 5_000;
+/** @deprecated Co-winner window removed; kept for any stray imports. */
+export const CO_WIN_MS = 0;
 
 export function columnForNumber(value: number): BingoColumn | null {
   for (const column of COLUMNS) {
@@ -174,6 +182,32 @@ export function marksForCells(cells: BingoCells, called: Iterable<number>) {
     if (index === CENTER_INDEX || value === FREE_CELL) return true;
     return set.has(value);
   });
+}
+
+/** Manual-mark board: only FREE is pre-marked. */
+export function emptyMarks(): boolean[] {
+  return Array.from({ length: CELL_COUNT }, (_, index) => index === CENTER_INDEX);
+}
+
+export function parseMarks(raw: string | null | undefined): boolean[] {
+  const fallback = emptyMarks();
+  if (!raw || raw === "[]") return fallback;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed) || parsed.length !== CELL_COUNT) return fallback;
+    return parsed.map((value, index) =>
+      index === CENTER_INDEX ? true : Boolean(value),
+    );
+  } catch {
+    return fallback;
+  }
+}
+
+export function serializeMarks(marks: boolean[]): string {
+  const next = marks.slice(0, CELL_COUNT);
+  while (next.length < CELL_COUNT) next.push(false);
+  next[CENTER_INDEX] = true;
+  return JSON.stringify(next.map(Boolean));
 }
 
 function rowComplete(marks: boolean[], row: number) {

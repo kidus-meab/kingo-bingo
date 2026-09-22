@@ -3,6 +3,7 @@ import { expect, test } from "bun:test";
 import {
   CENTER_INDEX,
   CELL_COUNT,
+  emptyMarks,
   findWinningPatterns,
   hasBlackout,
   hasColumn,
@@ -11,6 +12,8 @@ import {
   hasRow,
   marksForCells,
   matchedPatterns,
+  parseMarks,
+  serializeMarks,
 } from "./bingo";
 
 function marks(indexes: number[]) {
@@ -24,6 +27,20 @@ test("FREE center is always marked", () => {
   const cells = Array.from({ length: CELL_COUNT }, (_, i) => i + 1);
   cells[CENTER_INDEX] = 0;
   expect(marksForCells(cells, [])[CENTER_INDEX]).toBe(true);
+});
+
+test("emptyMarks only pre-marks FREE", () => {
+  const next = emptyMarks();
+  expect(next[CENTER_INDEX]).toBe(true);
+  expect(next.filter(Boolean)).toHaveLength(1);
+});
+
+test("parseMarks and serializeMarks round-trip", () => {
+  const marked = marks([0, 1, 2]);
+  const raw = serializeMarks(marked);
+  expect(parseMarks(raw)).toEqual(marked);
+  expect(parseMarks("[]")[CENTER_INDEX]).toBe(true);
+  expect(parseMarks("not-json")[CENTER_INDEX]).toBe(true);
 });
 
 test("row / column / diagonal / corners / blackout", () => {

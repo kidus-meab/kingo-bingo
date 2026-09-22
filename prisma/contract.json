@@ -181,7 +181,21 @@
                   "kind": "scalar"
                 }
               },
+              "disqualified": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sqlite/integer@1",
+                  "kind": "scalar"
+                }
+              },
               "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "sqlite/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "marks": {
                 "nullable": false,
                 "type": {
                   "codecId": "sqlite/text@1",
@@ -273,8 +287,14 @@
                 "cartelaId": {
                   "column": "cartelaId"
                 },
+                "disqualified": {
+                  "column": "disqualified"
+                },
                 "id": {
                   "column": "id"
+                },
+                "marks": {
+                  "column": "marks"
                 },
                 "roundId": {
                   "column": "roundId"
@@ -389,6 +409,13 @@
                   "kind": "scalar"
                 }
               },
+              "hopInEndsAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "sqlite/datetime@1",
+                  "kind": "scalar"
+                }
+              },
               "id": {
                 "nullable": false,
                 "type": {
@@ -411,6 +438,13 @@
                 }
               },
               "startedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "sqlite/datetime@1",
+                  "kind": "scalar"
+                }
+              },
+              "startingEndsAt": {
                 "nullable": true,
                 "type": {
                   "codecId": "sqlite/datetime@1",
@@ -493,6 +527,9 @@
                 "endedAt": {
                   "column": "endedAt"
                 },
+                "hopInEndsAt": {
+                  "column": "hopInEndsAt"
+                },
                 "id": {
                   "column": "id"
                 },
@@ -504,6 +541,9 @@
                 },
                 "startedAt": {
                   "column": "startedAt"
+                },
+                "startingEndsAt": {
+                  "column": "startingEndsAt"
                 },
                 "status": {
                   "column": "status"
@@ -873,8 +913,26 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "disqualified": {
+                  "codecId": "sqlite/integer@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "integer",
+                  "nullable": false
+                },
                 "id": {
                   "codecId": "sqlite/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "marks": {
+                  "codecId": "sqlite/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "[]"
+                  },
                   "nativeType": "text",
                   "nullable": false
                 },
@@ -1065,6 +1123,11 @@
                   "nativeType": "text",
                   "nullable": true
                 },
+                "hopInEndsAt": {
+                  "codecId": "sqlite/datetime@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "id": {
                   "codecId": "sqlite/text@1",
                   "nativeType": "text",
@@ -1081,6 +1144,11 @@
                   "nullable": false
                 },
                 "startedAt": {
+                  "codecId": "sqlite/datetime@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "startingEndsAt": {
                   "codecId": "sqlite/datetime@1",
                   "nativeType": "text",
                   "nullable": true
@@ -1303,7 +1371,7 @@
         "id": "__unbound__"
       }
     },
-    "storageHash": "70eec4bda816665b0d4f0be210b71a929410effa4ee771b423330adbd8b060c1"
+    "storageHash": "06bee6f29baa8eefffef2b1db6962af2c8f72a1a46912bd03d77216959fdd1a9"
   },
   "capabilities": {
     "sql": {

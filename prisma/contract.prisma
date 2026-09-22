@@ -23,16 +23,18 @@ model Room {
 }
 
 model Round {
-  id            String        @id
-  roomId        String
-  room          Room          @relation(fields: [roomId], references: [id])
-  status        String
-  pattern       String
-  startedAt     DateTime?
-  endedAt       DateTime?
-  playerCards   PlayerCard[]
-  calledNumbers CalledNumber[]
-  wins          Win[]
+  id             String         @id
+  roomId         String
+  room           Room           @relation(fields: [roomId], references: [id])
+  status         String
+  pattern        String
+  hopInEndsAt    DateTime?
+  startingEndsAt DateTime?
+  startedAt      DateTime?
+  endedAt        DateTime?
+  playerCards    PlayerCard[]
+  calledNumbers  CalledNumber[]
+  wins           Win[]
 }
 
 model Cartela {
@@ -43,14 +45,16 @@ model Cartela {
 }
 
 model PlayerCard {
-  id        String  @id
-  roundId   String
-  userId    String
-  cartelaId String
-  round     Round   @relation(fields: [roundId], references: [id])
-  user      User    @relation(fields: [userId], references: [id])
-  cartela   Cartela @relation(fields: [cartelaId], references: [id])
-  wins      Win[]
+  id           String  @id
+  roundId      String
+  userId       String
+  cartelaId    String
+  marks        String  @default("[]")
+  disqualified Int     @default(0)
+  round        Round   @relation(fields: [roundId], references: [id])
+  user         User    @relation(fields: [userId], references: [id])
+  cartela      Cartela @relation(fields: [cartelaId], references: [id])
+  wins         Win[]
 
   @@unique([roundId, userId])
   @@unique([roundId, cartelaId])

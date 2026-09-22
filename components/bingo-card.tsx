@@ -4,12 +4,18 @@ type BingoCardProps = {
   cells: number[];
   marked?: boolean[];
   compact?: boolean;
+  interactive?: boolean;
+  disabled?: boolean;
+  onCellClick?: (index: number) => void;
 };
 
 export function BingoCard({
   cells,
   marked = [],
   compact = false,
+  interactive = false,
+  disabled = false,
+  onCellClick,
 }: BingoCardProps) {
   return (
     <div
@@ -27,18 +33,33 @@ export function BingoCard({
           const value = cells[index] ?? FREE_CELL;
           const isFree = index === CENTER_INDEX || value === FREE_CELL;
           const isMarked = Boolean(marked[index]);
+          const canClick = interactive && !disabled && !isMarked && !isFree;
+
+          const className = `grid aspect-square place-items-center rounded-lg font-bold ${
+            compact ? "text-[8px]" : "text-base"
+          } ${
+            isMarked
+              ? "bg-theme text-on-theme"
+              : "bg-background text-foreground"
+          } ${canClick ? "cursor-pointer active:scale-95" : ""} ${
+            disabled && !isMarked ? "opacity-60" : ""
+          }`;
+
+          if (canClick) {
+            return (
+              <button
+                key={index}
+                type="button"
+                onClick={() => onCellClick?.(index)}
+                className={className}
+              >
+                {isFree ? "FREE" : value}
+              </button>
+            );
+          }
 
           return (
-            <div
-              key={index}
-              className={`grid aspect-square place-items-center rounded-lg font-bold ${
-                compact ? "text-[8px]" : "text-base"
-              } ${
-                isMarked
-                  ? "bg-theme text-on-theme"
-                  : "bg-background text-foreground"
-              }`}
-            >
+            <div key={index} className={className}>
               {isFree ? "FREE" : value}
             </div>
           );

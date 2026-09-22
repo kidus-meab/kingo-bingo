@@ -10,11 +10,13 @@ export function LastCalled({ ball }: { ball: CalledBall | null }) {
   }
 
   return (
-    <div className="grid size-24 place-items-center rounded-full bg-theme text-on-theme shadow-[0_0_32px_color-mix(in_srgb,var(--theme)_40%,transparent)]">
-      <div className="text-center leading-none">
-        <p className="text-[11px] font-bold tracking-[0.2em]">{ball.label[0]}</p>
-        <p className="text-3xl font-extrabold">{ball.value}</p>
-      </div>
+    <div
+      key={`${ball.order}-${ball.value}`}
+      className="ball-draw-pop grid size-24 place-items-center rounded-full bg-theme text-on-theme"
+    >
+      <p className="text-[1.65rem] font-extrabold tracking-tight leading-none">
+        {ball.label}
+      </p>
     </div>
   );
 }
@@ -25,10 +27,12 @@ export function RecentCalls({ balls }: { balls: CalledBall[] }) {
 
   return (
     <div className="flex flex-wrap justify-center gap-1.5">
-      {recent.map((ball) => (
+      {recent.map((ball, index) => (
         <span
           key={`${ball.order}-${ball.value}`}
-          className="rounded-full bg-surface px-2.5 py-1 text-xs font-semibold text-foreground"
+          className={`rounded-full bg-surface px-2.5 py-1 text-xs font-semibold text-foreground ${
+            index === 0 ? "ball-draw-pop bg-theme/20 text-theme" : ""
+          }`}
         >
           {ball.label}
         </span>
