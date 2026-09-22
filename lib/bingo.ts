@@ -184,6 +184,22 @@ export function marksForCells(cells: BingoCells, called: Iterable<number>) {
   });
 }
 
+/**
+ * Marks that count for bingo: player-daubed AND (FREE or actually called).
+ * Premature taps stay on the card but do not satisfy a win.
+ */
+export function effectiveMarks(
+  cells: BingoCells,
+  marks: boolean[],
+  called: Iterable<number>,
+) {
+  const set = new Set(called);
+  return cells.map((value, index) => {
+    if (index === CENTER_INDEX || value === FREE_CELL) return true;
+    return Boolean(marks[index]) && set.has(value);
+  });
+}
+
 /** Manual-mark board: only FREE is pre-marked. */
 export function emptyMarks(): boolean[] {
   return Array.from({ length: CELL_COUNT }, (_, index) => index === CENTER_INDEX);

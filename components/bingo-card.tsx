@@ -33,7 +33,7 @@ export function BingoCard({
           const value = cells[index] ?? FREE_CELL;
           const isFree = index === CENTER_INDEX || value === FREE_CELL;
           const isMarked = Boolean(marked[index]);
-          const canClick = interactive && !disabled && !isMarked && !isFree;
+          const canClick = interactive && !disabled && !isFree;
 
           const className = `grid aspect-square place-items-center rounded-lg font-bold ${
             compact ? "text-[8px]" : "text-base"
@@ -53,14 +53,14 @@ export function BingoCard({
                 onClick={() => onCellClick?.(index)}
                 className={className}
               >
-                {isFree ? "FREE" : value}
+                {isFree ? "X" : value}
               </button>
             );
           }
 
           return (
             <div key={index} className={className}>
-              {isFree ? "FREE" : value}
+              {isFree ? "X" : value}
             </div>
           );
         })}

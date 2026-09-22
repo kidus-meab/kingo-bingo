@@ -273,7 +273,7 @@ export async function claimCartela(
   roundId: string,
   cartelaId: string,
   me: AppUser,
-) {
+): Promise<MyCard | null> {
   const round = (await db.orm.Round.where({ id: roundId }).first()) as
     | RoundRow
     | null;
@@ -294,7 +294,15 @@ export async function claimCartela(
   }
 
   if (mine && mine.cartelaId === cartelaId) {
-    return getMyCard(roundId, me.id);
+    // Toggle off — release this cartela.
+    await db.orm.PlayerCard.where({ id: mine.id }).delete();
+    const remaining = await loadPlayerCards(roundId);
+    if (remaining.length === 0 && round.hopInEndsAt) {
+      await db.orm.Round.where({ id: roundId }).update({
+        hopInEndsAt: null,
+      } as { hopInEndsAt: null });
+    }
+    return null;
   }
 
   const marks = serializeMarks(emptyMarks());

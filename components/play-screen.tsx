@@ -253,14 +253,20 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
     setBusyId(cartelaId);
     setError(null);
     try {
-      const nextCard = await apiFetch<MyCard>(
+      const payload = await apiFetch<{ card: MyCard | null }>(
         `/api/rounds/${lobby.round.id}/cartelas/${cartelaId}/claim`,
         { method: "POST", body: JSON.stringify({}) },
       );
+      const nextCard = payload.card;
       setCard(nextCard);
-      setPreviewId(nextCard.cartelaId);
-      setChanging(false);
-      setView("card");
+      setPreviewId(cartelaId);
+      if (nextCard) {
+        setChanging(false);
+        setView("card");
+      } else {
+        setChanging(true);
+        setView("picker");
+      }
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not claim cartela");
@@ -308,7 +314,7 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
       hapticNotify("success");
     } catch (err) {
       hapticNotify("error");
-      setError(err instanceof Error ? err.message : "Not a valid bingo");
+      setError(err instanceof Error ? err.message : "INVALID Bingo");
       await refresh().catch(() => undefined);
     } finally {
       setBingoBusy(false);
@@ -462,7 +468,7 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
 
           {disqualified && drawing ? (
             <p className="mb-2 text-center text-xs font-semibold text-theme">
-              Withdrawn — watching the draw
+              INVALID Bingo
             </p>
           ) : null}
 
@@ -476,13 +482,19 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
               </div>
 
               {shownCard ? (
-                <BingoCard
-                  cells={shownCard.cells}
-                  marked={shownCard.marked}
-                  interactive={drawing && !disqualified}
-                  disabled={!drawing || Boolean(disqualified) || markBusy}
-                  onCellClick={(index) => void markCell(index)}
-                />
+                <div
+                  className={
+                    disqualified ? "pointer-events-none opacity-40" : undefined
+                  }
+                >
+                  <BingoCard
+                    cells={shownCard.cells}
+                    marked={shownCard.marked}
+                    interactive={drawing && !disqualified}
+                    disabled={!drawing || Boolean(disqualified) || markBusy}
+                    onCellClick={(index) => void markCell(index)}
+                  />
+                </div>
               ) : (
                 <p className="text-center text-sm text-muted">
                   You did not pick a cartela this round.
@@ -501,7 +513,7 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
                   {bingoBusy
                     ? "Checking…"
                     : disqualified
-                      ? "Withdrawn"
+                      ? "INVALID Bingo"
                       : "BINGO"}
                 </button>
               ) : null}
@@ -575,7 +587,12 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
                         key={cartela.id}
                         type="button"
                         disabled={!waiting && !isMine}
-                        onClick={() => setPreviewId(cartela.id)}
+                        onClick={() => {
+                          setPreviewId(cartela.id);
+                          if (isMine && waiting) {
+                            void claim(cartela.id);
+                          }
+                        }}
                         className={`aspect-square rounded-lg text-xs font-bold transition-colors ${
                           isPreview
                             ? "bg-theme text-on-theme"
@@ -634,16 +651,16 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
                       {waiting ? (
                         <button
                           type="button"
-                          disabled={
-                            takenByOther || busyId === preview.id || isMine
-                          }
+                          disabled={takenByOther || busyId === preview.id}
                           onClick={() => void claim(preview.id)}
                           className="mt-3 h-12 shrink-0 rounded-2xl bg-theme font-bold text-on-theme disabled:opacity-45"
                         >
                           {busyId === preview.id
-                            ? "Claiming…"
+                            ? isMine
+                              ? "Releasing…"
+                              : "Claiming…"
                             : isMine
-                              ? `Using #${preview.index}`
+                              ? `Release #${preview.index}`
                               : takenByOther
                                 ? "Already taken"
                                 : `Claim #${preview.index}`}

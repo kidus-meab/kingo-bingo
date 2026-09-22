@@ -5,7 +5,7 @@ import {
   CENTER_INDEX,
   CELL_COUNT,
   DEFAULT_ROUND_PATTERN,
-  FREE_CELL,
+  effectiveMarks,
   formatBall,
   HOP_IN_MS,
   matchedPatterns,
@@ -435,31 +435,20 @@ export async function markCell(
   }).first()) as PlayerCardRow | null;
   if (!card) throw new RoomError("Claim a cartela first", 400);
   if (card.disqualified) {
-    throw new RoomError("You are withdrawn from this match", 403);
+    throw new RoomError("INVALID Bingo", 403);
   }
 
   const cartela = await getCartela(card.cartelaId);
   if (!cartela) throw new RoomError("Cartela not found", 404);
 
-  const value = cartela.cells[cellIndex] ?? FREE_CELL;
-  const isFree = cellIndex === CENTER_INDEX || value === FREE_CELL;
-
-  if (!isFree) {
-    const called = await loadCalledNumbers(roundId);
-    if (!called.some((row) => row.value === value)) {
-      throw new RoomError("That number has not been called yet", 400);
-    }
-  }
-
   const marks = parseMarks(card.marks);
-  if (marks[cellIndex]) {
-    return getMyCard(roundId, me.id).then((next) => {
-      if (!next) throw new RoomError("Could not load card", 500);
-      return next;
-    });
+  if (cellIndex === CENTER_INDEX) {
+    const next = await getMyCard(roundId, me.id);
+    if (!next) throw new RoomError("Could not load card", 500);
+    return next;
   }
 
-  marks[cellIndex] = true;
+  marks[cellIndex] = !marks[cellIndex];
   marks[CENTER_INDEX] = true;
 
   await withLockRetry(() =>
@@ -485,17 +474,23 @@ export async function claimBingo(roundId: string, me: AppUser) {
   const card = await getMyCard(roundId, me.id);
   if (!card) throw new RoomError("Claim a cartela before shouting bingo", 400);
   if (card.disqualified) {
-    throw new RoomError("You are withdrawn from this match", 403);
+    throw new RoomError("INVALID Bingo", 403);
   }
 
-  const matched = matchedPatterns(card.marked, round.pattern);
+  const called = await loadCalledNumbers(roundId);
+  const counted = effectiveMarks(
+    card.cells,
+    card.marked,
+    called.map((row) => row.value),
+  );
+  const matched = matchedPatterns(counted, round.pattern);
   if (matched.length === 0) {
     await withLockRetry(() =>
       db.orm.PlayerCard.where({ id: card.id }).update({ disqualified: 1 } as {
         disqualified: number;
       }),
     );
-    throw new RoomError("Not a valid bingo — withdrawn from the match", 400);
+    throw new RoomError("INVALID Bingo", 400);
   }
 
   try {

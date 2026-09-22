@@ -3,6 +3,7 @@ import { expect, test } from "bun:test";
 import {
   CENTER_INDEX,
   CELL_COUNT,
+  effectiveMarks,
   emptyMarks,
   findWinningPatterns,
   hasBlackout,
@@ -29,10 +30,14 @@ test("FREE center is always marked", () => {
   expect(marksForCells(cells, [])[CENTER_INDEX]).toBe(true);
 });
 
-test("emptyMarks only pre-marks FREE", () => {
-  const next = emptyMarks();
-  expect(next[CENTER_INDEX]).toBe(true);
-  expect(next.filter(Boolean)).toHaveLength(1);
+test("effectiveMarks ignores premature daubs until called", () => {
+  const cells = Array.from({ length: CELL_COUNT }, (_, i) => i + 1);
+  cells[CENTER_INDEX] = 0;
+  const marks = emptyMarks();
+  marks[0] = true;
+  expect(effectiveMarks(cells, marks, [])[0]).toBe(false);
+  expect(effectiveMarks(cells, marks, [cells[0]!])[0]).toBe(true);
+  expect(effectiveMarks(cells, marks, [])[CENTER_INDEX]).toBe(true);
 });
 
 test("parseMarks and serializeMarks round-trip", () => {

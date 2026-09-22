@@ -176,7 +176,7 @@ api.post("/rounds/:id/cartelas/:cartelaId/claim", async (c) => {
       user,
     );
     await advanceRound(c.req.param("id"));
-    return c.json(card);
+    return c.json({ card });
   } catch (error) {
     return apiError(error);
   }
