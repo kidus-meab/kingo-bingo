@@ -1,0 +1,54 @@
+STEP 1 OF 5 — Telegram Mini App shell and theme
+Kingo Bingo
+
+Read plan/idea.txt first. Implement ONLY this step. Do not build rooms, cards, drawing, Prisma models, or gameplay.
+
+GOAL
+Turn the existing Next.js app into a Telegram Mini App shell with a single global theme color and a Telegram-authenticated user session. After this step, opening the app inside Telegram should show a branded Kingo Bingo home screen tied to the Telegram user.
+
+CURRENT PROJECT
+- Next.js 16 App Router, React 19, Tailwind v4
+- app/layout.tsx, app/page.tsx ("Hello World"), app/globals.css (@import "tailwindcss")
+- Mona Sans is already loaded in the root layout
+- Dev script already uses HTTPS: next dev --experimental-https (required for Telegram Mini Apps)
+- .env already has BOT_ACCESS_TOKEN. Use that env name. Never commit secrets. Never print the token.
+
+WHAT TO BUILD
+
+1. Telegram Web App bootstrap
+- Load the official Telegram Web App script (https://telegram.org/js/telegram-web-app.js) in app/layout.tsx.
+- On the client, call Telegram.WebApp.ready() and Telegram.WebApp.expand() so the mini app fills the Telegram webview.
+- Apply Telegram theme hints where useful (header color, background) but keep our own UI theme as source of truth.
+- Create a small client helper (e.g. lib/telegram.ts) that safely reads window.Telegram.WebApp, initData, and user (id, first_name, username, photo_url).
+
+2. Validate Telegram initData on the server
+- Add a server utility that HMAC-validates Telegram Mini App initData using BOT_ACCESS_TOKEN (Telegram WebApp initData validation algorithm).
+- Add an API route such as POST /api/auth/telegram that accepts initData, validates it, and returns the Telegram user (id, first_name, username, photo_url).
+- Reject invalid/expired initData. Do not invent a fake login UI. This is a Telegram Mini App; identity comes from Telegram.
+- For local browser testing outside Telegram, allow a clearly marked dev-only fallback (e.g. only when NODE_ENV=development) so the home screen still renders. Do not use this fallback in production.
+
+3. Global theme (one color, easy to change later)
+- In app/globals.css, define a single CSS custom property as the brand color, e.g. --theme: <chosen color>.
+- Build the rest of the palette from that one variable (background, surface, text, accent, muted). Pick a bingo / lottery vibe (deep, high-contrast, festive) but keep it tasteful for a mobile webview.
+- Use Tailwind v4 @theme so utility classes can consume the token (e.g. bg-theme, text-theme).
+- Changing --theme in one place must restyle the whole app. Do not scatter hardcoded brand hex values across components.
+- Root layout should be full-viewport, no page scroll chrome that fights Telegram (min-h-dvh, overflow handling, safe-area padding).
+
+4. Home screen UI
+- Replace the Hello World page with a Kingo Bingo landing/home that looks like a mini app, not a marketing site.
+- Show: app name, short tagline, Telegram user greeting (photo + first name when available), and a disabled or placeholder "Play" / "Join room" control that says gameplay comes in a later step.
+- Mobile-first, thumb-friendly, ~390px wide Telegram webview. No desktop sidebar layouts.
+- Do not implement cartela grids, rooms, or number balls yet. A simple branded shell is enough.
+
+CONSTRAINTS
+- Do not add Prisma, SQLite, or game domain models in this step.
+- Do not install unrelated UI kits. Tailwind + a little CSS is enough.
+- Keep files small and named clearly (lib/, app/api/, components/).
+- Do not rewrite next.config unless Telegram embedding requires a specific header.
+
+ACCEPTANCE
+- npm run dev starts. Home screen renders with the theme color.
+- Changing --theme in globals.css changes the look of the home screen.
+- Inside Telegram, WebApp.ready/expand run and the user name from initData appears after a successful /api/auth/telegram call.
+- Invalid initData is rejected by the API.
+- No bingo rules, rooms, or database yet.

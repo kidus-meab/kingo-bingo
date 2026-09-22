@@ -1,26 +1,39 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Change this one value to restyle the whole app. */
+  --theme: #61f029;
+
+  --background: color-mix(in srgb, var(--theme) 9%, #100c08);
+  --surface: color-mix(in srgb, var(--theme) 16%, #1a140e);
+  --surface-strong: color-mix(in srgb, var(--theme) 24%, #241c14);
+  --text: color-mix(in srgb, var(--theme) 10%, #fff8eb);
+  --muted: color-mix(in srgb, var(--theme) 28%, #9a8d7a);
+  --accent: var(--theme);
+  --on-theme: color-mix(in srgb, var(--theme) 12%, #1a1208);
 }
 
 @theme inline {
+  --color-theme: var(--theme);
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-foreground: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-on-theme: var(--on-theme);
+  --font-sans: var(--font-mona-sans);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  min-height: 100dvh;
+  overflow: hidden;
 }
 
 body {
   background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
 }

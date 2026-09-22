@@ -1,0 +1,61 @@
+STEP 5 OF 5 — Co-winners, new round, and Mini App polish
+Kingo Bingo
+
+Read plan/idea.txt. Assume Steps 1–4 are done (Telegram shell, DB, cartela pick, live draw, auto-mark, BINGO verify). This is the last step. Finish the product loop and polish the Telegram Mini App UX.
+
+GOAL
+Handle co-winners on the same called number, announce winner(s), then start a new round that generates a fresh play state: called numbers reset, players pick cartelas again (from the same 100 templates with different orders), and the game can be played repeatedly inside Telegram.
+
+RULES FROM THE IDEA
+- If multiple players complete a winning pattern on the same number, they can be co-winners.
+- Numbers already called cannot be called again (already true per round).
+- A new round generates new cards (players re-select from the 100 cartelas) and resets called numbers.
+- System already verifies Bingo; keep verification server-side.
+
+WHAT TO BUILD
+
+1. Same-call co-winners
+- When a number is drawn, keep a short claim window (e.g. 2–4 seconds) OR accept all valid POST /bingo that are based on the same lastCalled value while you collect claims, then finish the round once.
+- Practical implementation: on first valid bingo for callOrder N, set round to "checking" (not yet finished), record the win, wait ~3s (or collect concurrent requests), accept any other valid bingo whose card is complete using only numbers up to N, then mark round finished with all those winners.
+- Simpler acceptable variant: finish immediately but if another valid bingo arrives within T seconds for the same last number, add Win rows and keep them as co-winners (round already finished, but same lastCalled). Document which you chose. Must be possible to have 2+ Win rows for one round.
+
+2. Winner announcement UI
+- Full-screen or overlay: winner names (and avatars if you have photoUrl), pattern won (row / column / diagonal / corners / blackout), last number called.
+- Co-winners listed together. Use the theme color. Celebrate without blocking Telegram's native close button.
+
+3. New round
+- POST /api/rooms/:id/rounds — only when current round is finished (or waiting with no active drawing round).
+- Creates a new Round: empty CalledNumbers, no PlayerCards, status pending.
+- Players return to cartela selection (Step 3 UI). Previous claims do not carry over. The 100 cartela templates stay; availability is per new round.
+- Called number board clears. Card marks clear.
+- Room stays the same; players still in the room.
+
+4. Lobby / flow polish
+- Waiting: show who has picked a cartela, who has not, Start round when at least one card is claimed.
+- Drawing: last ball, card, BINGO, called list.
+- Finished: winners + "Next round" button.
+- If a user opens the mini app mid-round, restore the correct screen from round status (pending picker, drawing table, finished overlay).
+
+5. Telegram Mini App polish
+- Viewport: expand, header color = theme, background color = theme background.
+- Disable vertical bounce / overscroll where it fights the card.
+- BackButton: from card/picker go to lobby; from lobby hide back or close confirm if appropriate.
+- HapticFeedback on draw and on valid BINGO if available.
+- Loading and error states for API failures (claim taken, invalid bingo, stale round).
+- Keep a single --theme in globals.css as the only brand color switch.
+
+6. Safety / quality
+- All join/claim/draw/bingo/new-round routes validate Telegram initData (or the session established in Step 1).
+- Race-safe unique constraints still hold (one cartela per player per round, one player per cartela).
+- Do not leave debug endpoints open without a dev guard.
+
+OUT OF SCOPE
+- Payments, stars, ads, extra game modes, friend invites beyond room code, native Telegram bot menus beyond what is needed to open the Mini App.
+- Do not switch off SQLite/Prisma or rewrite the stack.
+
+ACCEPTANCE
+- Full loop in Telegram: open app → join room → pick cartela → start → numbers draw and mark → valid BINGO → winner shown → next round → pick again → numbers start from empty.
+- Two players can be co-winners when both complete a pattern on the same called number.
+- Invalid bingo still rejected.
+- Changing --theme still restyles the whole app.
+- npm run build succeeds.

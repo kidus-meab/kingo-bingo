@@ -1,0 +1,65 @@
+STEP 4 OF 5 — Live round: draw, auto-mark, claim BINGO
+Kingo Bingo
+
+Read plan/idea.txt. Assume Steps 1–3 are done (Telegram shell, DB, 100 cartelas, room join, card picker, 5×5 card UI). Implement ONLY this step. Co-winner polish and "new round" reset are Step 5; design this step so Step 5 can add them cleanly.
+
+GOAL
+Start a round, draw one unused number at a time, auto-mark matching cells on each player's card, and let a player press BINGO. The server verifies the card against called numbers and the required pattern. A valid Bingo ends the round and names the winner.
+
+GAME RULES TO IMPLEMENT
+- Draw from 1–75. A number already called this round must never be called again.
+- If the called number exists on a player's cartela, it is marked automatically (client reflects server called numbers; do not let the client mark arbitrary cells).
+- FREE center always counts as marked.
+- Player presses BINGO when they believe they have a winning pattern. Do not auto-win without a press.
+- Server verifies. If invalid, reject and keep the round going. If valid, record a Win and finish the round.
+- Winning patterns (support all; default round may accept any of the first three):
+  - Horizontal row (any of 5 rows)
+  - Vertical column (any of 5 columns)
+  - Diagonal (two main diagonals)
+  - Four corners
+  - Full card / blackout
+- Client must not be trusted for win checks.
+
+WHAT TO BUILD
+
+1. Round start + draw engine (server)
+- POST /api/rounds/:id/start — moves pending → drawing. Require at least 1 player with a claimed cartela. Optionally restrict to a host later; for now any player in the room may start.
+- POST /api/rounds/:id/draw — draws the next random unused number, stores CalledNumber (value, order), returns the number and the full called list.
+- Guard: only while status is drawing; 75 max calls; unique values.
+- Optional: a server-side interval or a "Next number" control on the UI. For a Mini App without a dedicated host daemon, a host/player "Call next" button plus optional auto-draw on an interval (client or route handler) is fine. Prefer: one player (first joiner / host) has "Call next", and also support auto-draw every N seconds while the round is drawing so it feels like a real bingo hall. Auto-draw must be idempotent if two clients tick.
+
+2. Round state API
+- GET /api/rounds/:id/state → status, calledNumbers (in order), lastCalled, players (id, name, cartelaIndex), myCard + derived marks, wins.
+- Derive marks as: cell is marked if it is FREE or its number is in calledNumbers.
+
+3. Card marking UI
+- Reuse the Step 3 card component. Marked cells use the theme color; unmarked stay neutral.
+- Show last called number prominently (B12 / I24 style letter+number).
+- Show a recent-calls strip (last ~5 balls) and/or a compact called-number board.
+- All players in the room should see the same last number (poll every 1s while drawing, or SSE if you already have a clean pattern; polling is acceptable).
+
+4. BINGO claim
+- Big BINGO button, enabled only during drawing when the player has a claimed card.
+- POST /api/rounds/:id/bingo
+  - Load player's PlayerCard + all CalledNumbers.
+  - Compute marks.
+  - Check enabled patterns for this round.
+  - If none match: 400 with reason (not a valid bingo).
+  - If match: create Win, set round status finished, return winner + pattern + completed lines.
+- After a valid win, UI shows winner name and disables draw / BINGO. Do not yet start a new round (Step 5).
+
+5. Pattern helpers
+- Put pure functions in lib/bingo.ts (or similar): isMarked, hasRow, hasColumn, hasDiagonal, hasCorners, hasBlackout, findPatterns(marks). Unit-test these if easy (optional but valuable). Do not put this logic only in a React component.
+
+CONSTRAINTS
+- Do not regenerate cartelas or reset claims yet (that is Step 5).
+- Co-winners: if two players claim on the same called number, accept both if both are valid and the round has not been marked finished yet. Use a short transaction: if round is still drawing, record the win; if you want same-call co-winners, do not finish the round until state is fetched after the current number's claim window — simplest acceptable approach for this step: first valid claim wins and ends the round. Step 5 will add a same-number co-winner window if missing.
+- Keep theme tokens. Keep Telegram auth on mutations.
+
+ACCEPTANCE
+- Starting a round with claimed cards begins drawing.
+- Each draw is a new number; no repeats in that round.
+- Cards auto-mark from called numbers; FREE is always marked.
+- Fake BINGO (no completed pattern) is rejected.
+- Real BINGO (e.g. a full row of called numbers) is accepted, winner is stored, round status becomes finished, drawing stops.
+- Reloading the mini app restores the same called numbers and marks from the database.

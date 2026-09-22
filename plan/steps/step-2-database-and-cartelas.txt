@@ -1,0 +1,83 @@
+STEP 2 OF 5 — Database, Prisma, and 100 cartelas
+Kingo Bingo
+
+Read plan/idea.txt and assume Step 1 is already done (Telegram shell + theme + initData auth). Implement ONLY this step. Do not build room UI, drawing, or live gameplay.
+
+GOAL
+Add Prisma + SQLite and persist the game domain: Telegram users, rooms, rounds, a fixed pool of 100 unique cartelas, player card claims, called numbers, and wins. Seed exactly 100 cartelas with valid Bingo number orders.
+
+TECH
+- Next.js 16, Prisma is already in package.json as a devDependency (^8.0.0-rc.15). Add @prisma/client if missing. Use the Prisma 8 API that ships with this project; do not downgrade.
+- SQLite file database. Put DATABASE_URL in .env (e.g. file:./dev.db) and .env.example without secrets.
+- BOT_ACCESS_TOKEN already exists; do not remove it.
+
+BINGO CARD RULES (must be encoded in seed + types)
+- 5×5 grid, columns B I N G O.
+- B: 1–15, I: 16–30, N: 31–45, G: 46–60, O: 61–75.
+- Center cell (row 3, col N) is FREE (store as 0 or null; pick one and use it consistently).
+- Each of the 100 cartelas must have a different number order (unique set/permutation of numbers per card). No two seed cards should be identical.
+- A cartela is a reusable template. Players claim a cartela for a round; they do not own it forever.
+
+SUGGESTED SCHEMA (adapt names if needed, keep relations clear)
+
+User
+- telegramId (unique string/bigint), firstName, username, photoUrl, createdAt
+
+Room
+- id, code (short join code, unique), status (waiting | playing | finished), createdAt
+- optional hostUserId
+
+Round
+- id, roomId, status (pending | drawing | finished), pattern (row | column | diagonal | corners | blackout), startedAt, endedAt
+- One room has many rounds. Current round is the latest non-finished, or a pointer on Room.
+
+Cartela
+- id, index 1–100 (unique), cells JSON (25 numbers, row-major, center FREE)
+- These 100 rows are the global pool.
+
+PlayerCard
+- id, roundId, userId, cartelaId
+- unique(roundId, userId) — one card per player per round
+- unique(roundId, cartelaId) — two players cannot pick the same cartela in the same round
+- marked JSON or derived later from called numbers (prefer deriving from called numbers so marks cannot desync)
+
+CalledNumber
+- id, roundId, value (1–75), order (call index), calledAt
+- unique(roundId, value) — a number cannot be called twice in a round
+
+Win
+- id, roundId, userId, playerCardId, pattern, claimedAt
+- Multiple wins on the same call are allowed (co-winners).
+
+WHAT TO BUILD
+
+1. Prisma init
+- prisma/schema.prisma with datasource sqlite.
+- lib/prisma.ts singleton client (Next.js friendly).
+- Scripts: prisma generate, prisma migrate, prisma db seed. Wire seed in package.json prisma.seed.
+
+2. Seed 100 cartelas
+- Write a deterministic or shuffled generator that respects column ranges and FREE center.
+- Ensure uniqueness across the 100 cards.
+- Seed at least one default room (e.g. code KINGO) in waiting status so later steps have something to join. Do not build join UI yet.
+
+3. Server helpers (no UI)
+- getOrCreateUserFromTelegram(telegramUser)
+- getCartelas() — list all 100 (id, index, cells)
+- getCartela(id)
+- Types for a 5×5 card, column ranges, FREE center.
+
+4. Optional: tiny admin/debug JSON endpoints
+- GET /api/cartelas — list 100 cards (useful to verify seed). Protect or limit to development if easy.
+- Do not build a cartela picker UI. That is Step 3.
+
+CONSTRAINTS
+- Do not implement number drawing, BINGO verification, or WebSocket/SSE yet.
+- Do not change the home screen except a one-line status if useful ("100 cartelas ready").
+- Keep migrations in the repo.
+
+ACCEPTANCE
+- prisma migrate + db seed succeed.
+- SQLite contains exactly 100 cartelas, each valid (column ranges + FREE center), all unique.
+- One default room exists.
+- App still builds. Telegram home screen from Step 1 still works.

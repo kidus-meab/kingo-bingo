@@ -1,0 +1,80 @@
+// use prisma-8
+
+model User {
+  id          String   @id @default(cuid(2))
+  telegramId  String   @unique
+  firstName   String
+  username    String?
+  photoUrl    String?
+  createdAt   DateTime @default(now())
+  hostedRooms Room[]   @relation("RoomHost")
+  playerCards PlayerCard[]
+  wins        Win[]
+}
+
+model Room {
+  id         String   @id @default(cuid(2))
+  code       String   @unique
+  status     String
+  createdAt  DateTime @default(now())
+  hostUserId String?
+  host       User?    @relation("RoomHost", fields: [hostUserId], references: [id])
+  rounds     Round[]
+}
+
+model Round {
+  id            String        @id @default(cuid(2))
+  roomId        String
+  room          Room          @relation(fields: [roomId], references: [id])
+  status        String
+  pattern       String
+  startedAt     DateTime?
+  endedAt       DateTime?
+  playerCards   PlayerCard[]
+  calledNumbers CalledNumber[]
+  wins          Win[]
+}
+
+model Cartela {
+  id          String       @id @default(cuid(2))
+  index       Int          @unique
+  cells       String
+  playerCards PlayerCard[]
+}
+
+model PlayerCard {
+  id        String  @id @default(cuid(2))
+  roundId   String
+  userId    String
+  cartelaId String
+  round     Round   @relation(fields: [roundId], references: [id])
+  user      User    @relation(fields: [userId], references: [id])
+  cartela   Cartela @relation(fields: [cartelaId], references: [id])
+  wins      Win[]
+
+  @@unique([roundId, userId])
+  @@unique([roundId, cartelaId])
+}
+
+model CalledNumber {
+  id       String   @id @default(cuid(2))
+  roundId  String
+  value    Int
+  order    Int
+  calledAt DateTime @default(now())
+  round    Round    @relation(fields: [roundId], references: [id])
+
+  @@unique([roundId, value])
+}
+
+model Win {
+  id           String     @id @default(cuid(2))
+  roundId      String
+  userId       String
+  playerCardId String
+  pattern      String
+  claimedAt    DateTime   @default(now())
+  round        Round      @relation(fields: [roundId], references: [id])
+  user         User       @relation(fields: [userId], references: [id])
+  playerCard   PlayerCard @relation(fields: [playerCardId], references: [id])
+}

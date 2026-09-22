@@ -1,0 +1,39 @@
+Kingo Bingo Telegram Mini App
+
+kingo bingo is a telegram mini app that is launched as mini app in the telegram application 
+and let people play bingo.
+
+Bingo Game Rules
+Players join a game room and each player receives a randomly generated Bingo card.
+Each card has a 5×5 grid with columns B, I, N, G, O.
+Numbers are arranged by column:
+B: 1–15
+I: 16–30
+N: 31–45
+G: 46–60
+O: 61–75
+The center square is usually a FREE space.
+The game randomly draws one number at a time.
+If the called number exists on a player's card, it is automatically marked.
+Players win when they complete the required pattern.
+Common winning patterns:
+Horizontal row
+Vertical column
+Diagonal
+Four corners
+Full card / blackout
+When a player completes a winning pattern, they can press BINGO.
+The system verifies the card automatically.
+If the Bingo is valid, the player is announced as the winner and the round ends.
+If multiple players complete the winning pattern on the same number, they can be co-winners.
+Numbers already called cannot be called again.
+A new round generates new cards and resets the called numbers.
+
+a user chooses between 100 cartelas which have different number orders
+
+Tech stack
+- nextjs, prisma, sqlite 
+
+Theme 
+Chhose but make customizable when buyilding like one global teheme color
+

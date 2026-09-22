@@ -3,12 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --experimental-https",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma skills sync || exit 0",
+    "prebuild": "prisma contract emit",
+    "db:emit": "prisma contract emit",
+    "db:init": "prisma contract emit && prisma db init",
+    "db:migrate": "prisma contract emit && prisma migration plan && prisma db migrate",
+    "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@prisma/orm-sqlite": "^8.0.0-rc.11",
+    "dotenv": "^18.0.2",
     "next": "16.0.4",
     "react": "19.2.0",
     "react-dom": "19.2.0"
@@ -20,7 +28,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.0.4",
+    "prisma": "^8.0.0-rc.15",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

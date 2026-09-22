@@ -1,0 +1,59 @@
+STEP 3 OF 5 — Rooms and cartela selection
+Kingo Bingo
+
+Read plan/idea.txt. Assume Steps 1–2 are done (Telegram shell, theme, Prisma, 100 seeded cartelas, default room). Implement ONLY this step. Do not draw numbers, auto-mark, or verify BINGO.
+
+GOAL
+A Telegram user can open the mini app, join a room, browse the 100 cartelas, pick one unused cartela, and see their 5×5 Bingo card on screen. That is the whole step.
+
+PLAYER FLOW
+1. Home (from Step 1) — Play / Join opens the room flow.
+2. Join the default room (seeded code KINGO) automatically, or enter/tap a room code. Keep join simple; one default room is enough.
+3. Room lobby: list of players in the current round, room code, waiting status.
+4. Cartela picker: user chooses 1 of 100 cartelas. Each cartela has a different number order.
+5. After pick: full 5×5 card view for that player. Other players' picks are locked (those cartelas show as taken).
+
+WHAT TO BUILD
+
+1. Round bootstrap
+- When a user joins a waiting room, ensure a current Round exists (status pending) with a default winning pattern of "any line" for now: horizontal, vertical, or diagonal. Store the allowed patterns on the round or as app constants. Four corners and blackout should exist in data/constants even if the lobby does not let the host switch patterns yet.
+- Create/find User from Telegram auth (Step 1 + Step 2 helper).
+
+2. APIs
+- POST /api/rooms/join { code } → room + current round + players
+- GET /api/rooms/:id or by code → lobby state
+- GET /api/rounds/:id/cartelas → 100 cartelas with takenBy (null or user summary)
+- POST /api/rounds/:id/cartelas/:cartelaId/claim → claim if free; reject if already taken or user already has a card this round
+- GET /api/me/card → current user's PlayerCard + cells for the active round
+
+All mutations must be server-side and check uniqueness (roundId+userId, roundId+cartelaId). Do not trust the client.
+
+3. Cartela picker UI
+- Mobile grid or list of 100 cartelas. Identify each by number 1–100.
+- Show a compact preview of the 5×5 (small, readable). Taken cartelas are disabled and visually distinct using the theme tokens from Step 1.
+- Tapping a free cartela claims it. If the claim fails (race), refresh and show it taken.
+- User can only hold one cartela per round. Switching cards: either disallow, or release the old one then claim the new one while the round is still pending. Prefer allow-switch only while round.status is pending.
+
+4. Player card UI component
+- Reusable 5×5 Bingo card:
+  - Header row: B I N G O
+  - 25 cells, center labeled FREE
+  - Numbers from the cartela cells
+  - Theme-aware, large enough to play on a phone
+- Marks are not live yet. You may style unmarked cells only, or accept a marked[] prop that stays empty until Step 4.
+
+5. Home wiring
+- Play button from Step 1 should enter this flow (join default room).
+- After claiming, navigate to the card / "waiting for round" screen. Do not start calling numbers.
+
+CONSTRAINTS
+- No number ball, no call interval, no BINGO button that verifies wins.
+- No WebSocket required; refresh/poll lobby + cartela taken-state every few seconds is enough for this step.
+- Keep using the global --theme token. No new hardcoded brand colors.
+
+ACCEPTANCE
+- Two different Telegram users (or one real + one dev fallback user) can join the same room.
+- They cannot claim the same cartela.
+- Each sees their own 5×5 card with valid column ranges and FREE center.
+- Taken cartelas appear taken for the other player after refresh/poll.
+- Round is still pending. No numbers have been called.
