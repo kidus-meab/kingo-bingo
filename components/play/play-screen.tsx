@@ -11,12 +11,7 @@ import { WalletChip } from "@/components/wallet-chip";
 import { WinnerOverlay } from "@/components/winner-overlay";
 import { DEFAULT_ROOM_CODE } from "@/lib/bingo";
 import { LIVE_POLL_MS, LOBBY_POLL_MS } from "@/lib/config";
-import {
-  apiFetch,
-  getStoredDevUserId,
-  setStoredDevUserId,
-} from "@/lib/client-session";
-import { DEV_USERS } from "@/lib/dev-users";
+import { apiFetch } from "@/lib/client-session";
 import type { LobbyState, MyCard, RoundCartela, RoundState } from "@/lib/game-types";
 import {
   hapticImpact,
@@ -66,7 +61,6 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
   const [view, setView] = useState<View>("picker");
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [devUserId, setDevUserId] = useState("0");
   const [changing, setChanging] = useState(false);
   const [bingoBusy, setBingoBusy] = useState(false);
   const [nextBusy, setNextBusy] = useState(false);
@@ -105,17 +99,36 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
 
   const refresh = useCallback(async () => {
     const knownRoundId = live?.round.id ?? lobby?.round.id;
-    const knownStatus = live?.round.status ?? lobby?.round.status;
 
-    if (
-      knownRoundId &&
-      knownStatus &&
-      knownStatus !== "pending"
-    ) {
+    // Always settle through round state once we know the round — keeps every
+    // client on the same advanceRound path (countdown + draws).
+    if (knownRoundId) {
       const nextLive = await apiFetch<RoundState>(
         `/api/rounds/${knownRoundId}/state`,
       );
       applyLive(nextLive);
+
+      if (nextLive.round.status === "pending") {
+        const cartelaPayload = await apiFetch<{ cartelas: RoundCartela[] }>(
+          `/api/rounds/${nextLive.round.id}/cartelas`,
+        );
+        setCartelas(cartelaPayload.cartelas);
+        setPreviewId((current) => {
+          if (current) return current;
+          const preferred =
+            cartelaPayload.cartelas.find(
+              (cartela) => cartela.takenBy?.id === nextLive.me.id,
+            ) ??
+            (nextLive.myCard
+              ? cartelaPayload.cartelas.find(
+                  (cartela) => cartela.id === nextLive.myCard?.cartelaId,
+                )
+              : null) ??
+            cartelaPayload.cartelas.find((cartela) => !cartela.takenBy);
+          return preferred?.id ?? null;
+        });
+      }
+
       return { lobby: asLobby(nextLive), card: nextLive.myCard };
     }
 
@@ -124,53 +137,44 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
       body: JSON.stringify({ code }),
     });
 
-    if (nextLobby.round.status !== "pending") {
-      const nextLive = await apiFetch<RoundState>(
-        `/api/rounds/${nextLobby.round.id}/state`,
+    const nextLive = await apiFetch<RoundState>(
+      `/api/rounds/${nextLobby.round.id}/state`,
+    );
+    applyLive(nextLive);
+
+    if (nextLive.round.status === "pending") {
+      const cartelaPayload = await apiFetch<{ cartelas: RoundCartela[] }>(
+        `/api/rounds/${nextLive.round.id}/cartelas`,
       );
-      applyLive(nextLive);
-      return { lobby: asLobby(nextLive), card: nextLive.myCard };
+      setCartelas(cartelaPayload.cartelas);
+      setPreviewId((current) => {
+        if (current) return current;
+        const preferred =
+          cartelaPayload.cartelas.find(
+            (cartela) => cartela.takenBy?.id === nextLive.me.id,
+          ) ??
+          (nextLive.myCard
+            ? cartelaPayload.cartelas.find(
+                (cartela) => cartela.id === nextLive.myCard?.cartelaId,
+              )
+            : null) ??
+          cartelaPayload.cartelas.find((cartela) => !cartela.takenBy);
+        return preferred?.id ?? null;
+      });
     }
 
-    const cardPayload = await apiFetch<{ card: MyCard | null }>(
-      `/api/me/card?roundId=${nextLobby.round.id}`,
-    );
-
-    lastRoundIdRef.current = nextLobby.round.id;
-    setLobby(nextLobby);
-    setCard(cardPayload.card);
-    setLive(null);
-
-    const cartelaPayload = await apiFetch<{ cartelas: RoundCartela[] }>(
-      `/api/rounds/${nextLobby.round.id}/cartelas`,
-    );
-    setCartelas(cartelaPayload.cartelas);
-    setPreviewId((current) => {
-      if (current) return current;
-      const preferred =
-        cartelaPayload.cartelas.find(
-          (cartela) => cartela.takenBy?.id === nextLobby.me.id,
-        ) ??
-        (cardPayload.card
-          ? cartelaPayload.cartelas.find(
-              (cartela) => cartela.id === cardPayload.card?.cartelaId,
-            )
-          : null) ??
-        cartelaPayload.cartelas.find((cartela) => !cartela.takenBy);
-      return preferred?.id ?? null;
-    });
-
-    return { lobby: nextLobby, card: cardPayload.card };
-  }, [applyLive, code, live?.round.id, live?.round.status, lobby?.round.id, lobby?.round.status]);
-
-  useEffect(() => {
-    setDevUserId(getStoredDevUserId());
-  }, []);
+    return { lobby: asLobby(nextLive), card: nextLive.myCard };
+  }, [applyLive, code, live?.round.id, lobby?.round.id]);
 
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
   const statusRef = useRef(live?.round.status ?? lobby?.round.status);
   statusRef.current = live?.round.status ?? lobby?.round.status;
+  const phaseEndsAtRef = useRef(
+    live?.round.phaseEndsAt ?? lobby?.round.phaseEndsAt ?? null,
+  );
+  phaseEndsAtRef.current =
+    live?.round.phaseEndsAt ?? lobby?.round.phaseEndsAt ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -189,6 +193,22 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
     void boot();
     let timer = 0;
     const schedule = () => {
+      const status = statusRef.current;
+      const phaseEndsAt = phaseEndsAtRef.current;
+      const phaseMs = phaseEndsAt ? Date.parse(phaseEndsAt) - Date.now() : null;
+      const livePhase =
+        status === "drawing" ||
+        status === "starting" ||
+        status === "finished" ||
+        (status === "pending" && phaseEndsAt != null);
+      // Poll faster near phase boundaries so clients catch transitions together.
+      const delay =
+        livePhase && phaseMs != null && phaseMs <= 1500
+          ? 400
+          : livePhase
+            ? LIVE_POLL_MS
+            : LOBBY_POLL_MS;
+
       timer = window.setTimeout(() => {
         void refreshRef
           .current()
@@ -196,13 +216,7 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
           .finally(() => {
             if (!cancelled) schedule();
           });
-      },
-        statusRef.current === "drawing" ||
-          statusRef.current === "starting" ||
-          statusRef.current === "finished"
-          ? LIVE_POLL_MS
-          : LOBBY_POLL_MS,
-      );
+      }, delay);
     };
     schedule();
 
@@ -344,19 +358,15 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
     }
   }
 
-  function switchDevUser(id: string) {
-    setStoredDevUserId(id);
-    setDevUserId(id);
-    setLobby(null);
-    setCard(null);
-    setLive(null);
-    setView("picker");
-    window.location.reload();
-  }
-
   const phaseEndsAt =
     live?.round.phaseEndsAt ?? lobby?.round.phaseEndsAt ?? null;
   const countdown = useCountdown(phaseEndsAt);
+
+  // When a phase clock hits 0, settle immediately so both clients advance together.
+  useEffect(() => {
+    if (countdown !== 0) return;
+    void refreshRef.current().catch(() => undefined);
+  }, [countdown]);
 
   if (!lobby) {
     return (
@@ -462,17 +472,29 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
           {error ? <p className="mt-2 text-xs text-theme">{error}</p> : null}
         </section>
       ) : (
-        <p className="px-4 pb-2 text-center text-xs text-muted">
-          Room {lobby.room.code}
-          {` · ${lobby.room.stake} Br`}
-          {` · Pot ${(live?.round.pot ?? lobby.round.pot) || 0} Br`}
-          {shownCard ? ` · Cartela #${shownCard.index}` : ""}
-          {waiting && countdown != null
-            ? ` · ${countdown}s`
-            : starting && countdown != null
-              ? ` · Start in ${countdown}s`
-              : ` · ${status}`}
-        </p>
+        <div className="flex items-center justify-between gap-2 px-4 pb-2">
+          <p className="min-w-0 truncate text-xs text-muted">
+            <span className="font-extrabold text-foreground">
+              {lobby.room.code}
+            </span>
+            <span className="mx-1.5 text-foreground/30">·</span>
+            {lobby.room.stake} Br
+            <span className="mx-1.5 text-foreground/30">·</span>
+            pot {(live?.round.pot ?? lobby.round.pot) || 0}
+            {shownCard ? (
+              <>
+                <span className="mx-1.5 text-foreground/30">·</span>#{shownCard.index}
+              </>
+            ) : null}
+          </p>
+          <p className="shrink-0 text-xs font-semibold text-theme">
+            {waiting && countdown != null
+              ? `${countdown}s`
+              : starting && countdown != null
+                ? `${countdown}s`
+                : status}
+          </p>
+        </div>
       )}
 
       {view === "card" && livePlay ? (
@@ -709,25 +731,6 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
           busy={nextBusy}
           onSkip={() => void nextRound()}
         />
-      ) : null}
-
-      {process.env.NODE_ENV !== "production" && view === "picker" ? (
-        <div className="flex gap-2 px-4 pb-4">
-          {Object.keys(DEV_USERS).map((id) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => switchDevUser(id)}
-              className={`rounded-full px-3 py-1 text-[11px] ${
-                devUserId === id
-                  ? "bg-theme text-on-theme"
-                  : "bg-surface text-muted"
-              }`}
-            >
-              Local {DEV_USERS[id]?.first_name}
-            </button>
-          ))}
-        </div>
       ) : null}
     </main>
   );

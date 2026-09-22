@@ -158,56 +158,113 @@ async function createPendingRound(roomId: string) {
 
 /**
  * Drive hop-in → starting → drawing → auto next round from any client poll.
+ * Phase deadlines are absolute (anchored to hop-in end), and status changes
+ * run inside a transaction so concurrent polls share one timeline.
  */
 export async function advanceRound(roundId: string): Promise<RoundRow | null> {
-  const round = await loadRound(roundId);
-  if (!round) return null;
+  const advanced = await withLockRetry(async () => {
+    let drawFirst = false;
+    const round = await db.transaction(async (tx) => {
+      const current = (await tx.orm.Round.where({ id: roundId }).first()) as
+        | RoundRow
+        | null;
+      if (!current) return null;
 
-  const now = Date.now();
+      const now = Date.now();
 
-  if (round.status === "pending") {
-    const hopEnd = round.hopInEndsAt ? calledAtMs(round.hopInEndsAt) : 0;
-    if (!hopEnd || now < hopEnd) return round;
+      if (current.status === "pending") {
+        const hopEnd = current.hopInEndsAt ? calledAtMs(current.hopInEndsAt) : 0;
+        if (!hopEnd || now < hopEnd) return current;
 
-    const cards = await loadPlayerCards(roundId);
-    if (cards.length === 0) {
-      // Reset hop-in so the next claim starts a fresh window.
-      await setRoundStatus(roundId, { hopInEndsAt: null });
-      return { ...round, hopInEndsAt: null };
-    }
+        const cards = (await tx.orm.PlayerCard.where({
+          roundId,
+        }).all()) as PlayerCardRow[];
+        if (cards.length === 0) {
+          await tx.orm.Round.where({ id: roundId }).update({
+            hopInEndsAt: null,
+          } as { hopInEndsAt: null });
+          return { ...current, hopInEndsAt: null };
+        }
 
-    const startingEndsAt = new Date(now + STARTING_MS);
-    await setRoundStatus(roundId, {
-      status: "starting",
-      startingEndsAt,
+        const startDeadline = hopEnd + STARTING_MS;
+        if (now < startDeadline) {
+          const startingEndsAt = new Date(startDeadline);
+          await tx.orm.Round.where({ id: roundId }).update({
+            status: "starting",
+            startingEndsAt,
+          } as { status: string; startingEndsAt: Date });
+          return { ...current, status: "starting", startingEndsAt };
+        }
+
+        // Hop-in and starting both elapsed (late poll) — open drawing now.
+        const startedAt = new Date(startDeadline);
+        await tx.orm.Round.where({ id: roundId }).update({
+          status: "drawing",
+          startingEndsAt: startedAt,
+          startedAt,
+        } as {
+          status: string;
+          startingEndsAt: Date;
+          startedAt: Date;
+        });
+        await tx.orm.Room.where({ id: current.roomId }).update({
+          status: "playing",
+        } as { status: string });
+        drawFirst = true;
+        return {
+          ...current,
+          status: "drawing",
+          startingEndsAt: startedAt,
+          startedAt,
+        };
+      }
+
+      if (current.status === "starting") {
+        const startEnd = current.startingEndsAt
+          ? calledAtMs(current.startingEndsAt)
+          : 0;
+        if (!startEnd || now < startEnd) return current;
+
+        const startedAt = new Date(startEnd);
+        await tx.orm.Round.where({ id: roundId }).update({
+          status: "drawing",
+          startedAt,
+        } as { status: string; startedAt: Date });
+        await tx.orm.Room.where({ id: current.roomId }).update({
+          status: "playing",
+        } as { status: string });
+        drawFirst = true;
+        return { ...current, status: "drawing", startedAt };
+      }
+
+      return current;
     });
-    return { ...round, status: "starting", startingEndsAt };
+
+    return { round, drawFirst };
+  });
+
+  if (!advanced?.round) return null;
+
+  if (advanced.drawFirst) {
+    const called = await loadCalledNumbers(roundId);
+    if (called.length === 0) {
+      try {
+        await drawNextNumber(roundId, { force: true });
+      } catch {
+        // Another poll may have drawn the opening ball already.
+      }
+    }
   }
 
-  if (round.status === "starting") {
-    const startEnd = round.startingEndsAt ? calledAtMs(round.startingEndsAt) : 0;
-    if (!startEnd || now < startEnd) return round;
-
-    await setRoundStatus(roundId, {
-      status: "drawing",
-      startedAt: new Date(),
-    });
-    await withLockRetry(() =>
-      db.orm.Room.where({ id: round.roomId }).update({ status: "playing" }),
-    );
-
-    try {
-      await drawNextNumber(roundId, { force: true });
-    } catch {
-      // First ball optional on race.
-    }
-
-    return { ...round, status: "drawing", startedAt: new Date() };
-  }
+  const round = (await loadRound(roundId)) ?? advanced.round;
 
   if (round.status === "drawing") {
     try {
-      await drawNextNumber(roundId, { force: false });
+      // Catch up to the absolute schedule (may draw more than one if a poll was late).
+      for (let i = 0; i < 5; i += 1) {
+        const drawn = await drawNextNumber(roundId, { force: false });
+        if (!drawn) break;
+      }
     } catch (error) {
       if (
         error instanceof RoomError &&
@@ -243,9 +300,9 @@ export async function advanceRound(roundId: string): Promise<RoundRow | null> {
 
   if (round.status === "finished") {
     const ended = round.endedAt ? calledAtMs(round.endedAt) : 0;
+    const now = Date.now();
     if (!ended || now - ended < WINNER_MS) return round;
 
-    // Auto-start the next pending round for this room.
     const current = await findCurrentRound(round.roomId);
     if (current && current.id !== round.id && current.status !== "finished") {
       return current;
@@ -402,13 +459,15 @@ export async function drawNextNumber(
         (await tx.orm.CalledNumber.where({ roundId }).all()) as CalledNumberRow[]
       ).sort((left, right) => left.order - right.order);
 
-      const last = called.at(-1);
-      if (
-        !options.force &&
-        last &&
-        Date.now() - calledAtMs(last.calledAt) < AUTO_DRAW_MS
-      ) {
-        return null;
+      if (!options.force) {
+        const started = round.startedAt ? calledAtMs(round.startedAt) : Date.now();
+        const dueCount = Math.max(
+          1,
+          Math.floor((Date.now() - started) / AUTO_DRAW_MS) + 1,
+        );
+        if (called.length >= dueCount) {
+          return null;
+        }
       }
 
       const pool = unusedBalls(called);
@@ -417,18 +476,17 @@ export async function drawNextNumber(
       }
 
       const value = pool[Math.floor(Math.random() * pool.length)]!;
-      const row = (await tx.orm.CalledNumber.create({
+      return (await tx.orm.CalledNumber.create({
         id: newId(),
         roundId,
         value,
         order: called.length + 1,
         calledAt: new Date(),
       })) as CalledNumberRow;
-      return row;
     }),
   );
 
-  return drawn ? toBall(drawn) : null;
+  return drawn;
 }
 
 export async function drawRound(roundId: string, me: AppUser, force = false) {
@@ -437,7 +495,7 @@ export async function drawRound(roundId: string, me: AppUser, force = false) {
     ? await drawNextNumber(roundId, { force: true })
     : await drawNextNumber(roundId, { force: false });
   const state = await getRoundState(roundId, me, { settle: false });
-  return { drawn, ...state };
+  return { drawn: drawn ? toBall(drawn) : null, ...state };
 }
 
 export async function markCell(

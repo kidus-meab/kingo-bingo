@@ -7,6 +7,7 @@ model User {
   username    String?
   photoUrl    String?
   balance     Int      @default(1000)
+  rewardBalance Int    @default(0)
   createdAt   DateTime @default(now())
   hostedRooms Room[]   @relation("RoomHost")
   playerCards PlayerCard[]
@@ -14,6 +15,7 @@ model User {
   deposits    Deposit[]
   sentTransfers     Transfer[] @relation("TransferFrom")
   receivedTransfers Transfer[] @relation("TransferTo")
+  transactions Transaction[]
 }
 
 model Room {
@@ -121,4 +123,17 @@ model Transfer {
   createdAt  DateTime @default(now())
   fromUser   User     @relation("TransferFrom", fields: [fromUserId], references: [id])
   toUser     User     @relation("TransferTo", fields: [toUserId], references: [id])
+}
+
+model Transaction {
+  id        String   @id
+  userId    String
+  type      String
+  amount    Int
+  status    String
+  label     String?
+  note      String?
+  relatedId String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
 }

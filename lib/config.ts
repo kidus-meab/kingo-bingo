@@ -52,6 +52,14 @@ export const DEFAULT_BALANCE_BIRR = intEnv("KINGO_BALANCE_BIRR", 1_000);
 export const MIN_DEPOSIT_BIRR = intEnv("KINGO_MIN_DEPOSIT_BIRR", 10);
 export const MIN_TRANSFER_BIRR = intEnv("KINGO_MIN_TRANSFER_BIRR", 1);
 
+/** First-join reward credited to rewardBalance. Prefers FIRST_REWARD, then KINGO_FIRST_REWARD. */
+export const FIRST_REWARD_BIRR = (() => {
+  const raw = rawEnv("FIRST_REWARD") ?? rawEnv("KINGO_FIRST_REWARD");
+  if (raw == null) return 100;
+  const value = Number(raw);
+  return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 100;
+})();
+
 export type DepositAccountSeed = {
   label: string;
   bankName: string;

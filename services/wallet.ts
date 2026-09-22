@@ -2,33 +2,23 @@ import { depositAccountSeeds, MIN_DEPOSIT_BIRR } from "@/lib/config";
 import { newId } from "@/lib/ids";
 import { db } from "@/lib/prisma";
 import { RoomError } from "@/lib/rooms";
-import { getUserBalance } from "@/lib/users";
+import {
+  listTransactions,
+  recordTransaction,
+} from "@/lib/transactions";
+import { getUserRewardBalance } from "@/lib/users";
+import type {
+  DepositAccountPublic,
+  DepositTx,
+  WalletState,
+} from "@/lib/wallet-types";
 
-export type DepositAccountPublic = {
-  id: string;
-  label: string;
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-};
-
-export type DepositTx = {
-  id: string;
-  amount: number;
-  status: string;
-  smsText: string;
-  createdAt: string;
-  accountLabel: string;
-};
-
-export type WalletState = {
-  balance: number;
-  rewardBalance: number;
-  firstName: string;
-  photoUrl: string | null;
-  accounts: DepositAccountPublic[];
-  transactions: DepositTx[];
-};
+export type {
+  DepositAccountPublic,
+  DepositTx,
+  WalletState,
+} from "@/lib/wallet-types";
+export type { WalletTransaction } from "@/lib/transaction-types";
 
 type AccountRow = {
   id: string;
@@ -73,42 +63,32 @@ function toIso(value: Date | string) {
 }
 
 export async function getRewardBalance(userId: string) {
-  const wins = (await db.orm.Win.where({ userId }).all()) as Array<{
-    payout?: number | null;
-  }>;
-  return wins.reduce((sum, win) => sum + Number(win.payout ?? 0), 0);
+  return getUserRewardBalance(userId);
 }
 
-export async function getWalletState(userId: string): Promise<WalletState> {
+export async function getWalletState(
+  userId: string,
+  options: { limit?: number; offset?: number } = {},
+): Promise<WalletState> {
   const user = (await db.orm.User.where({ id: userId }).first()) as {
     firstName?: string;
     photoUrl?: string | null;
     balance?: number | null;
   } | null;
 
-  const [balance, rewardBalance, accounts, deposits] = await Promise.all([
+  const [balance, rewardBalance, accounts, ledger] = await Promise.all([
     Promise.resolve(Number(user?.balance ?? 0)),
     getRewardBalance(userId),
     ensureDepositAccounts(),
-    db.orm.Deposit.where({ userId }).all() as Promise<DepositRow[]>,
+    listTransactions(userId, {
+      limit: options.limit ?? 12,
+      offset: options.offset ?? 0,
+    }),
   ]);
 
   const active = accounts
     .filter((account) => Number(account.active ?? 1) === 1)
     .sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0));
-
-  const byId = new Map(accounts.map((account) => [account.id, account]));
-
-  const transactions = deposits
-    .map((deposit) => ({
-      id: deposit.id,
-      amount: deposit.amount,
-      status: deposit.status,
-      smsText: deposit.smsText,
-      createdAt: toIso(deposit.createdAt),
-      accountLabel: byId.get(deposit.accountId)?.label ?? "Account",
-    }))
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 
   return {
     balance,
@@ -122,7 +102,9 @@ export async function getWalletState(userId: string): Promise<WalletState> {
       accountName: account.accountName,
       accountNumber: account.accountNumber,
     })),
-    transactions,
+    transactions: ledger.transactions,
+    transactionsTotal: ledger.total,
+    hasMoreTransactions: ledger.hasMore,
   };
 }
 
@@ -167,6 +149,16 @@ export async function createDeposit(
     status: string;
     createdAt: Date;
   })) as DepositRow;
+
+  await recordTransaction({
+    userId,
+    type: "deposit",
+    amount,
+    status: "pending",
+    label: account.label,
+    note: smsText.slice(0, 80),
+    relatedId: deposit.id,
+  });
 
   return {
     id: deposit.id,

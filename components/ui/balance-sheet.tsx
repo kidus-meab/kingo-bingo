@@ -48,28 +48,16 @@ export function BalanceSheet({
             </span>
           </div>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              router.push("/deposit");
-            }}
-            className="flex h-10 items-center justify-center rounded-xl bg-theme text-sm font-bold text-on-theme"
-          >
-            Deposit
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              router.push("/send");
-            }}
-            className="flex h-10 items-center justify-center rounded-xl bg-surface text-sm font-bold text-foreground"
-          >
-            Send
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            router.push("/wallet");
+          }}
+          className="mt-3 flex h-10 w-full items-center justify-center rounded-xl bg-theme text-sm font-bold text-on-theme"
+        >
+          Open wallet
+        </button>
       </div>
     </div>,
     document.body,

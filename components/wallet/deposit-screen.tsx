@@ -10,26 +10,8 @@ import { apiFetch } from "@/lib/client-session";
 import type {
   DepositTx,
   WalletState,
-} from "@/lib/wallet";
+} from "@/lib/wallet-types";
 import { setTelegramBackButton } from "@/lib/telegram";
-
-function formatDate(iso: string) {
-  const date = new Date(iso);
-  if (!Number.isFinite(date.getTime())) return "—";
-  return date.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function statusLabel(status: string) {
-  if (status === "pending") return "Pending";
-  if (status === "approved") return "Approved";
-  if (status === "rejected") return "Rejected";
-  return status;
-}
 
 export function DepositScreen() {
   const router = useRouter();
@@ -83,6 +65,7 @@ export function DepositScreen() {
       setAmount("");
       setSmsText("");
       setNotice("Deposit submitted — status Pending");
+      router.push("/wallet");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit deposit");
     } finally {
@@ -91,7 +74,6 @@ export function DepositScreen() {
   }
 
   const accounts = wallet?.accounts ?? [];
-  const transactions = wallet?.transactions ?? [];
 
   return (
     <main className="relative flex h-dvh flex-col overflow-hidden bg-background">
@@ -226,53 +208,9 @@ export function DepositScreen() {
             disabled={busy || !wallet}
             className="h-12 rounded-2xl bg-theme font-bold text-on-theme disabled:opacity-45"
           >
-            {busy ? "Sending…" : "Send"}
+            {busy ? "Sending…" : "Submit deposit"}
           </button>
         </form>
-
-        <div className="mt-8">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-muted uppercase">
-            Transactions
-          </p>
-          <div className="mt-2 overflow-hidden rounded-2xl bg-surface">
-            <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-background px-3 py-2 text-[10px] font-semibold tracking-[0.14em] text-muted uppercase">
-              <span>Amount</span>
-              <span>Status</span>
-              <span>Date</span>
-            </div>
-            {transactions.length === 0 ? (
-              <p className="px-3 py-4 text-sm text-muted">No deposits yet.</p>
-            ) : (
-              transactions.map((tx) => (
-                <div
-                  key={tx.id}
-                  className="grid grid-cols-[1fr_auto_auto] items-center gap-2 border-b border-background px-3 py-3 last:border-b-0"
-                >
-                  <div>
-                    <p className="text-sm font-bold text-foreground tabular-nums">
-                      {tx.amount} Br
-                    </p>
-                    <p className="text-[11px] text-muted">{tx.accountLabel}</p>
-                  </div>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                      tx.status === "pending"
-                        ? "bg-theme/20 text-theme"
-                        : tx.status === "approved"
-                          ? "bg-background text-foreground"
-                          : "bg-background text-muted"
-                    }`}
-                  >
-                    {statusLabel(tx.status)}
-                  </span>
-                  <span className="text-[11px] text-muted tabular-nums">
-                    {formatDate(tx.createdAt)}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
       </section>
     </main>
   );

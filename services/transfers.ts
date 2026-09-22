@@ -2,6 +2,7 @@ import { MIN_TRANSFER_BIRR } from "@/lib/config";
 import { newId } from "@/lib/ids";
 import { db } from "@/lib/prisma";
 import { RoomError } from "@/lib/rooms";
+import { recordTransaction } from "@/lib/transactions";
 
 export type TransferPeer = {
   id: string;
@@ -43,9 +44,22 @@ function toIso(value: Date | string) {
 }
 
 export async function listTransferPeers(meId: string): Promise<TransferPeer[]> {
+  const transfers = (await db.orm.Transfer.all()) as TransferRow[];
+  const sentToIds = [
+    ...new Set(
+      transfers
+        .filter((row) => row.fromUserId === meId)
+        .map((row) => row.toUserId),
+    ),
+  ];
+  if (sentToIds.length === 0) return [];
+
   const users = (await db.orm.User.all()) as UserRow[];
-  return users
-    .filter((user) => user.id !== meId)
+  const byId = new Map(users.map((user) => [user.id, user]));
+
+  return sentToIds
+    .map((id) => byId.get(id))
+    .filter((user): user is UserRow => Boolean(user) && user!.id !== meId)
     .map((user) => ({
       id: user.id,
       firstName: user.firstName,
@@ -113,6 +127,8 @@ export async function sendTransfer(
     throw new RoomError("You cannot send money to yourself", 400);
   }
 
+  let transferId = "";
+
   await db.transaction(async (tx) => {
     const from = (await tx.orm.User.where({ id: fromUserId }).first()) as
       | UserRow
@@ -130,6 +146,7 @@ export async function sendTransfer(
       );
     }
 
+    transferId = newId();
     await tx.orm.User.where({ id: fromUserId }).update({
       balance: fromBalance - amount,
     } as { balance: number });
@@ -137,7 +154,7 @@ export async function sendTransfer(
       balance: Number(to.balance ?? 0) + amount,
     } as { balance: number });
     await tx.orm.Transfer.create({
-      id: newId(),
+      id: transferId,
       fromUserId,
       toUserId: to.id,
       amount,
@@ -149,6 +166,29 @@ export async function sendTransfer(
       amount: number;
       createdAt: Date;
     });
+  });
+
+  const fromUser = (await db.orm.User.where({ id: fromUserId }).first()) as
+    | UserRow
+    | null;
+
+  await recordTransaction({
+    userId: fromUserId,
+    type: "send",
+    amount,
+    status: "completed",
+    label: toUser.firstName,
+    note: toUser.username ? `@${toUser.username}` : null,
+    relatedId: `out:${transferId}`,
+  });
+  await recordTransaction({
+    userId: toUser.id,
+    type: "receive",
+    amount,
+    status: "completed",
+    label: fromUser?.firstName ?? "Player",
+    note: fromUser?.username ? `@${fromUser.username}` : null,
+    relatedId: `in:${transferId}`,
   });
 
   return {

@@ -7,7 +7,7 @@ import { UserChip } from "@/components/user-chip";
 import { WalletChip } from "@/components/wallet-chip";
 import { MIN_TRANSFER_BIRR } from "@/lib/config";
 import { apiFetch } from "@/lib/client-session";
-import type { TransferPeer, TransferTx } from "@/lib/transfers";
+import type { TransferPeer } from "@/lib/transfers";
 import { setTelegramBackButton } from "@/lib/telegram";
 
 type SendPageState = {
@@ -15,19 +15,7 @@ type SendPageState = {
   firstName: string;
   photoUrl: string | null;
   peers: TransferPeer[];
-  transfers: TransferTx[];
 };
-
-function formatDate(iso: string) {
-  const date = new Date(iso);
-  if (!Number.isFinite(date.getTime())) return "—";
-  return date.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export function SendScreen() {
   const router = useRouter();
@@ -79,6 +67,7 @@ export function SendScreen() {
       setNotice(
         `Sent ${result.sent.amount} Br to ${result.sent.to.firstName}`,
       );
+      router.push("/wallet");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send");
     } finally {
@@ -159,7 +148,7 @@ export function SendScreen() {
             </div>
           ) : (
             <p className="text-sm text-muted">
-              No other players yet — use a username below.
+              No recent recipients — enter a username below.
             </p>
           )}
 
@@ -199,50 +188,6 @@ export function SendScreen() {
             {busy ? "Sending…" : "Send"}
           </button>
         </form>
-
-        <div className="mt-8">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-muted uppercase">
-            Transfers
-          </p>
-          <div className="mt-2 overflow-hidden rounded-2xl bg-surface">
-            <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-background px-3 py-2 text-[10px] font-semibold tracking-[0.14em] text-muted uppercase">
-              <span>Player</span>
-              <span>Amount</span>
-              <span>Date</span>
-            </div>
-            {(state?.transfers.length ?? 0) === 0 ? (
-              <p className="px-3 py-4 text-sm text-muted">No transfers yet.</p>
-            ) : (
-              state!.transfers.map((tx) => (
-                <div
-                  key={tx.id}
-                  className="grid grid-cols-[1fr_auto_auto] items-center gap-2 border-b border-background px-3 py-3 last:border-b-0"
-                >
-                  <div>
-                    <p className="text-sm font-bold text-foreground">
-                      {tx.peerName}
-                    </p>
-                    <p className="text-[11px] text-muted">
-                      {tx.direction === "out" ? "Sent" : "Received"}
-                      {tx.peerUsername ? ` · @${tx.peerUsername}` : ""}
-                    </p>
-                  </div>
-                  <span
-                    className={`text-sm font-extrabold tabular-nums ${
-                      tx.direction === "out" ? "text-muted" : "text-theme"
-                    }`}
-                  >
-                    {tx.direction === "out" ? "-" : "+"}
-                    {tx.amount} Br
-                  </span>
-                  <span className="text-[11px] text-muted tabular-nums">
-                    {formatDate(tx.createdAt)}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
       </section>
     </main>
   );

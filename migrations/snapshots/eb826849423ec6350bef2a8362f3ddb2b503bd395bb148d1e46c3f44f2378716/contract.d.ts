@@ -17,7 +17,7 @@ import type {
 } from '@prisma/orm-sqlite/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'d8df95aaec630a19415afea7abe36806631e2d38e1e37c843090825c83a3373e'>;
+  StorageHashBase<'eb826849423ec6350bef2a8362f3ddb2b503bd395bb148d1e46c3f44f2378716'>;
 export type ExecutionHash = ExecutionHashBase<string>;
 export type ProfileHash =
   ProfileHashBase<'260b8608d1aacaf1f690779a6cff39a12947c599597c5ba464ca75b9e775df53'>;
@@ -210,7 +210,6 @@ export type FieldOutputTypes = {
       readonly username: CodecTypes['sqlite/text@1']['output'] | null;
       readonly photoUrl: CodecTypes['sqlite/text@1']['output'] | null;
       readonly balance: CodecTypes['sqlite/integer@1']['output'];
-      readonly rewardBalance: CodecTypes['sqlite/integer@1']['output'];
       readonly createdAt: CodecTypes['sqlite/datetime@1']['output'];
     };
     readonly Win: {
@@ -308,7 +307,6 @@ export type FieldInputTypes = {
       readonly username: CodecTypes['sqlite/text@1']['input'] | null;
       readonly photoUrl: CodecTypes['sqlite/text@1']['input'] | null;
       readonly balance: CodecTypes['sqlite/integer@1']['input'];
-      readonly rewardBalance: CodecTypes['sqlite/integer@1']['input'];
       readonly createdAt: CodecTypes['sqlite/datetime@1']['input'];
     };
     readonly Win: {
@@ -405,7 +403,6 @@ export type StorageColumnTypes = {
       readonly firstName: CodecTypes['sqlite/text@1']['output'];
       readonly id: CodecTypes['sqlite/text@1']['output'];
       readonly photoUrl: CodecTypes['sqlite/text@1']['output'] | null;
-      readonly rewardBalance: CodecTypes['sqlite/integer@1']['output'];
       readonly telegramId: CodecTypes['sqlite/text@1']['output'];
       readonly username: CodecTypes['sqlite/text@1']['output'] | null;
     };
@@ -503,7 +500,6 @@ export type StorageColumnInputTypes = {
       readonly firstName: CodecTypes['sqlite/text@1']['input'];
       readonly id: CodecTypes['sqlite/text@1']['input'];
       readonly photoUrl: CodecTypes['sqlite/text@1']['input'] | null;
-      readonly rewardBalance: CodecTypes['sqlite/integer@1']['input'];
       readonly telegramId: CodecTypes['sqlite/text@1']['input'];
       readonly username: CodecTypes['sqlite/text@1']['input'] | null;
     };
@@ -527,7 +523,6 @@ export namespace Models {
     username: CodecTypes['sqlite/text@1']['output'] | null;
     photoUrl: CodecTypes['sqlite/text@1']['output'] | null;
     balance: CodecTypes['sqlite/integer@1']['output'];
-    rewardBalance: CodecTypes['sqlite/integer@1']['output'];
     createdAt: CodecTypes['sqlite/datetime@1']['output'];
     deposits: Deposit[];
     hostedRooms: Room[];
@@ -1331,15 +1326,6 @@ type ContractBase = Omit<
                     readonly value: DefaultLiteralValue<'sqlite/integer@1', 1000>;
                   };
                 };
-                readonly rewardBalance: {
-                  readonly nativeType: 'integer';
-                  readonly codecId: 'sqlite/integer@1';
-                  readonly nullable: false;
-                  readonly default: {
-                    readonly kind: 'literal';
-                    readonly value: DefaultLiteralValue<'sqlite/integer@1', 0>;
-                  };
-                };
                 readonly createdAt: {
                   readonly nativeType: 'text';
                   readonly codecId: 'sqlite/datetime@1';
@@ -2132,10 +2118,6 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'sqlite/integer@1' };
               };
-              readonly rewardBalance: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'sqlite/integer@1' };
-              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'sqlite/datetime@1' };
@@ -2230,7 +2212,6 @@ type ContractBase = Omit<
                 readonly username: { readonly column: 'username' };
                 readonly photoUrl: { readonly column: 'photoUrl' };
                 readonly balance: { readonly column: 'balance' };
-                readonly rewardBalance: { readonly column: 'rewardBalance' };
                 readonly createdAt: { readonly column: 'createdAt' };
               };
             };

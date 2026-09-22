@@ -32,7 +32,6 @@ import {
 import { createDeposit, getWalletState } from "@/lib/wallet";
 import {
   listTransferPeers,
-  listTransfers,
   sendTransfer,
 } from "@/lib/transfers";
 
@@ -266,7 +265,14 @@ api.post("/rounds/:id/bingo", async (c) => {
 api.get("/wallet", async (c) => {
   try {
     const user = await requireUser(c.req.raw);
-    return c.json(await getWalletState(user.id));
+    const limitRaw = Number(c.req.query("limit") ?? 12);
+    const offsetRaw = Number(c.req.query("offset") ?? 0);
+    return c.json(
+      await getWalletState(user.id, {
+        limit: Number.isFinite(limitRaw) ? limitRaw : 12,
+        offset: Number.isFinite(offsetRaw) ? offsetRaw : 0,
+      }),
+    );
   } catch (error) {
     return apiError(error);
   }
@@ -292,17 +298,13 @@ api.post("/deposits", async (c) => {
 api.get("/send", async (c) => {
   try {
     const user = await requireUser(c.req.raw);
-    const wallet = await getWalletState(user.id);
-    const [peers, transfers] = await Promise.all([
-      listTransferPeers(user.id),
-      listTransfers(user.id),
-    ]);
+    const wallet = await getWalletState(user.id, { limit: 1 });
+    const peers = await listTransferPeers(user.id);
     return c.json({
       balance: wallet.balance,
       firstName: wallet.firstName,
       photoUrl: wallet.photoUrl,
       peers,
-      transfers,
     });
   } catch (error) {
     return apiError(error);
@@ -320,11 +322,8 @@ api.post("/send", async (c) => {
       username: typeof body.username === "string" ? body.username : undefined,
       amount: Number(body.amount),
     });
-    const wallet = await getWalletState(user.id);
-    const [peers, transfers] = await Promise.all([
-      listTransferPeers(user.id),
-      listTransfers(user.id),
-    ]);
+    const wallet = await getWalletState(user.id, { limit: 1 });
+    const peers = await listTransferPeers(user.id);
     return c.json({
       sent,
       page: {
@@ -332,7 +331,6 @@ api.post("/send", async (c) => {
         firstName: wallet.firstName,
         photoUrl: wallet.photoUrl,
         peers,
-        transfers,
       },
     });
   } catch (error) {
