@@ -17,6 +17,7 @@
   "dependencies": {
     "@prisma/orm-sqlite": "^8.0.0-rc.11",
     "dotenv": "^18.0.2",
+    "hono": "^4.13.8",
     "next": "16.0.4",
     "react": "19.2.0",
     "react-dom": "19.2.0"
@@ -26,6 +27,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^10.0.5",
     "eslint": "^9",
     "eslint-config-next": "16.0.4",
     "prisma": "^8.0.0-rc.15",

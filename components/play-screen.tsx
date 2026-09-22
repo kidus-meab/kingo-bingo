@@ -48,6 +48,7 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
   const [changing, setChanging] = useState(false);
   const [bingoBusy, setBingoBusy] = useState(false);
   const [nextBusy, setNextBusy] = useState(false);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const lastBallRef = useRef<string | null>(null);
 
   const applyLive = useCallback((next: RoundState) => {
@@ -94,15 +95,28 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
     setCard(cardPayload.card);
     setLive(null);
 
-    if (!cardPayload.card || changing) {
-      const cartelaPayload = await apiFetch<{ cartelas: RoundCartela[] }>(
-        `/api/rounds/${nextLobby.round.id}/cartelas`,
-      );
-      setCartelas(cartelaPayload.cartelas);
-    }
+    // Always keep the number grid fresh while the round is still pending.
+    const cartelaPayload = await apiFetch<{ cartelas: RoundCartela[] }>(
+      `/api/rounds/${nextLobby.round.id}/cartelas`,
+    );
+    setCartelas(cartelaPayload.cartelas);
+    setPreviewId((current) => {
+      if (current) return current;
+      const preferred =
+        cartelaPayload.cartelas.find(
+          (cartela) => cartela.takenBy?.id === nextLobby.me.id,
+        ) ??
+        (cardPayload.card
+          ? cartelaPayload.cartelas.find(
+              (cartela) => cartela.id === cardPayload.card?.cartelaId,
+            )
+          : null) ??
+        cartelaPayload.cartelas.find((cartela) => !cartela.takenBy);
+      return preferred?.id ?? null;
+    });
 
     return { lobby: nextLobby, card: cardPayload.card };
-  }, [applyLive, changing, code, live?.round.id, live?.round.status, lobby?.round.id, lobby?.round.status]);
+  }, [applyLive, code, live?.round.id, live?.round.status, lobby?.round.id, lobby?.round.status]);
 
   useEffect(() => {
     setDevUserId(getStoredDevUserId());
@@ -209,6 +223,7 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
         { method: "POST", body: JSON.stringify({}) },
       );
       setCard(nextCard);
+      setPreviewId(nextCard.cartelaId);
       setChanging(false);
       setView("card");
       await refresh();
@@ -414,6 +429,8 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
                 onClick={() => {
                   setChanging(true);
                   setView("picker");
+                  if (card) setPreviewId(card.cartelaId);
+                  void refresh();
                 }}
                 className="h-12 rounded-2xl bg-surface font-semibold text-foreground"
               >
@@ -449,52 +466,108 @@ export function PlayScreen({ code = DEFAULT_ROOM_CODE }: { code?: string }) {
           ) : null}
         </section>
       ) : (
-        <section className="min-h-0 flex-1 overflow-y-auto px-4 pb-5">
-          <p className="mb-3 text-sm text-muted">
-            Choose one of 100 cartelas. Taken cards stay locked.
+        <section className="flex min-h-0 flex-1 flex-col px-4 pb-5">
+          <p className="mb-3 shrink-0 text-sm text-muted">
+            Tap a number, preview the card, then claim it.
           </p>
           {cartelas.length === 0 ? (
             <p className="text-sm text-muted">Loading cartelas…</p>
-          ) : null}
-          <div className="grid grid-cols-2 gap-3">
-            {cartelas.map((cartela) => {
-              const takenByOther =
-                Boolean(cartela.takenBy) && cartela.takenBy?.id !== mine.id;
-              const isMine = cartela.takenBy?.id === mine.id;
+          ) : (
+            <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-3">
+              <div className="min-h-0 overflow-y-auto rounded-2xl bg-surface p-2">
+                <div className="grid grid-cols-5 gap-1.5">
+                  {cartelas.map((cartela) => {
+                    const takenByOther =
+                      Boolean(cartela.takenBy) &&
+                      cartela.takenBy?.id !== mine.id;
+                    const isMine = cartela.takenBy?.id === mine.id;
+                    const isPreview = previewId === cartela.id;
 
-              return (
-                <button
-                  key={cartela.id}
-                  type="button"
-                  disabled={takenByOther || busyId === cartela.id || !waiting}
-                  onClick={() => void claim(cartela.id)}
-                  className={`rounded-2xl p-2 text-left ${
-                    isMine
-                      ? "bg-theme/20 ring-2 ring-theme"
-                      : takenByOther
-                        ? "bg-surface opacity-45"
-                        : "bg-surface"
-                  }`}
-                >
-                  <div className="mb-1 flex items-center justify-between px-1">
-                    <span className="text-xs font-bold text-foreground">
-                      #{cartela.index}
-                    </span>
-                    <span className="text-[10px] text-muted">
-                      {isMine
-                        ? "Yours"
-                        : takenByOther
-                          ? `Taken · ${cartela.takenBy?.firstName}`
-                          : busyId === cartela.id
+                    return (
+                      <button
+                        key={cartela.id}
+                        type="button"
+                        disabled={!waiting && !isMine}
+                        onClick={() => setPreviewId(cartela.id)}
+                        className={`aspect-square rounded-lg text-xs font-bold transition-colors ${
+                          isPreview
+                            ? "bg-theme text-on-theme"
+                            : isMine
+                              ? "bg-theme/25 text-theme ring-1 ring-theme"
+                              : takenByOther
+                                ? "bg-background/40 text-muted line-through opacity-50"
+                                : "bg-background text-foreground"
+                        }`}
+                        title={
+                          isMine
+                            ? "Yours"
+                            : takenByOther
+                              ? `Taken · ${cartela.takenBy?.firstName}`
+                              : `Cartela #${cartela.index}`
+                        }
+                      >
+                        {cartela.index}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex min-h-0 flex-col overflow-y-auto">
+                {(() => {
+                  const preview =
+                    cartelas.find((cartela) => cartela.id === previewId) ??
+                    cartelas[0] ??
+                    null;
+                  if (!preview) {
+                    return (
+                      <p className="text-sm text-muted">Select a cartela.</p>
+                    );
+                  }
+
+                  const takenByOther =
+                    Boolean(preview.takenBy) && preview.takenBy?.id !== mine.id;
+                  const isMine = preview.takenBy?.id === mine.id;
+
+                  return (
+                    <>
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <p className="text-sm font-bold text-foreground">
+                          Cartela #{preview.index}
+                        </p>
+                        <p className="text-[11px] text-muted">
+                          {isMine
+                            ? "Yours"
+                            : takenByOther
+                              ? `Taken · ${preview.takenBy?.firstName}`
+                              : "Free"}
+                        </p>
+                      </div>
+                      <BingoCard cells={preview.cells} />
+                      {waiting ? (
+                        <button
+                          type="button"
+                          disabled={
+                            takenByOther || busyId === preview.id || isMine
+                          }
+                          onClick={() => void claim(preview.id)}
+                          className="mt-3 h-12 shrink-0 rounded-2xl bg-theme font-bold text-on-theme disabled:opacity-45"
+                        >
+                          {busyId === preview.id
                             ? "Claiming…"
-                            : "Free"}
-                    </span>
-                  </div>
-                  <BingoCard cells={cartela.cells} compact />
-                </button>
-              );
-            })}
-          </div>
+                            : isMine
+                              ? `Using #${preview.index}`
+                              : takenByOther
+                                ? "Already taken"
+                                : `Claim #${preview.index}`}
+                        </button>
+                      ) : null}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
         </section>
       )}
 
